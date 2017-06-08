@@ -30,7 +30,7 @@ def calc_hash(name, hash_multiplier):
 		result = ord(c) + (result * hash_multiplier)
 		# ensure the result is a 32-bit value
 		result &= 0xFFFFFFFF
-		return result
+	return result
 
 
 def convertpng():
@@ -40,7 +40,7 @@ def convertpng():
 		for file in files:
 			if not file.endswith('.png'):
 				continue
-			bflim=Bflim(verbose=True, debug=True, big_endian=False, swizzle=4)
+			bflim=Bflim(verbose=False, debug=False, big_endian=False, swizzle=4)
 			bflim.load(file)
 			bflim.save(file.replace('.png','.bflim'))
 	print('Converted.')
@@ -53,7 +53,7 @@ def convertbflim():
 		for file in files:
 			if not file.endswith('.bflim'):
 				continue
-			bflim=Bflim(verbose=True, debug=True, big_endian=False, swizzle=4)
+			bflim=Bflim(verbose=False, debug=False, big_endian=False, swizzle=4)
 			bflim.read(file, parse_image=True)
 			if bflim.invalid:
 				print('Invalid BFLIM file: %s'%file)
@@ -110,15 +110,18 @@ def extract(alytfile):
 	i+=alythdata[7]
 	
 	i=alythdata[8]
+	fwrite(str(i),'_alyt.repack.meta/alyt.elfnl')
 	log.write('\n')
 	filenumber=struct.unpack('<I',alyt[i:i+4])[0]
 	log.write('Number of files: %d:\n'%filenumber)
-	i+=4 #there is visibly 4 bytes of padding. Not counted in header, and seems to be always 0
+	i+=4
 	nametable=[]
+	bs=i
 	for j in range(0,filenumber):
 		nametable.append(alyt[i:i+64].rstrip(b'\x00').decode('utf-8'))
 		i+=64
 	log.write('\n'.join(nametable))
+	fwrite(alyt[bs:i],'_alyt.repack.meta/alyt.nmtb','wb')
 	
 	bs=i
 	symnumber=struct.unpack('<I',alyt[i:i+4])[0]
@@ -127,12 +130,12 @@ def extract(alytfile):
 	for j in range(0,symnumber):
 		symtable.append(alyt[i:i+32].rstrip(b'\x00').decode('utf-8'))
 		i+=32
-	fwrite(alyt[bs:i],"_alyt.repack.meta/alyt.symtbl")
 	log.write('\n')
 	log.write('Symbol names? (number: %d)\n'%len(symtable))
 	log.write('\n'.join(symtable))
 	#i+=88
 	i=alyt[i:-1].index(b'SARC')+i
+	fwrite(alyt[bs:i],"_alyt.repack.meta/alyt.symtbl")
 	sarchdata=struct.unpack('<4sHHIII',alyt[i:i+0x14])
 	log.write('\n')
 	log.write('SARC Header Data:\n')
@@ -217,7 +220,8 @@ def extract(alytfile):
 def repacksarc():
 	print('Repacking SARC section...')
 	sfnt=bytearray(fread('_alyt.repack.meta/alyt.sfnt','rb'))
-	sfntdata={}
+	hashmul=int(fread('_alyt.repack.meta/sfat.hashmul'))
+	sfntdata=[]
 	name=b''
 	zero=0
 	i=0
@@ -226,25 +230,27 @@ def repacksarc():
 		if char==0:
 			zero+=1
 			if name!=b'':
-				sfntdata[(i-len(name))//4]=name
+				sfntdata.append((calc_hash(name,hashmul),(i-len(name))//4,name))
 				name=b''
 			if zero>4:
 				break
 		else:
 			zero=0
 			name+=chr(char)
+	sfntdata.sort()
 	sfntheader=struct.pack('<4sHH','SFNT',0x08,0x00)
 	sfatnodes=[]
 	filedata=''
-	hashmul=int(fread('_alyt.repack.meta/sfat.hashmul'))
-	for i,nameoffset in enumerate(sfntdata.keys()):
-		node=[calc_hash(filename,hashmul),(nameoffset|0x01000000)/4]
-		content=fread(sfntdata[nameoffset],'rb')
-		filestart=len(filedata)
-		fileend=filestart+len(content)
-		node+=[filestart,fileend]
+	pointer=0
+	for i,info in enumerate(sfntdata):
+		content=fread(info[2],'rb')
+		filestart=pointer
+		padding=0x04-(len(content)%0x04)
+		filedata+=content+(padding*b'\x00')
+		fileend=filestart+len(content)+padding
+		pointer+=len(content)+padding
+		node=[info[0],(info[1]|0x01000000),filestart,fileend]
 		sfatnodes.append(node)
-		filedata+=content
 	sfattable=''.join([struct.pack('<IIII',*node) for node in sfatnodes])
 	sfatheader=struct.pack('<4sHHI','SFAT',0x0c,len(sfatnodes),hashmul)
 	
@@ -252,7 +258,7 @@ def repacksarc():
 	sarcdata=headdata+filedata
 	sarcheader=struct.pack('<4sHHIII','SARC',0x14,0xfeff,len(sarcdata)+0x14,len(headdata)+0x14,0x00000100)
 	sarc=sarcheader+sarcdata
-	return sarc,sfntdata.values()
+	return sarc,[el[2] for el in sfntdata]
 
 def repack(folder):
 	os.chdir(folder)
@@ -262,19 +268,18 @@ def repack(folder):
 	lmtl=fread('_alyt.repack.meta/alyt.lmtl','rb')
 	lfnl=fread('_alyt.repack.meta/alyt.lfnl','rb')
 	#but is it a symbol table? That's the question.
-	symtable=fread('_alyt.repack.meta/alyt.symtbl')
-	nametable=''
-	for name in filenames:
-		tblname=name+((64-len(name))*'\x00')
-		nametable+=tblname
+	symtable=fread('_alyt.repack.meta/alyt.symtbl','rb')
+	nametable=fread('_alyt.repack.meta/alyt.nmtb','rb')
 	nametable=struct.pack('<I',len(filenames))+nametable
-	hdrdata=ltbl+lmtl+lfnl+'\x00\x00\x00\x00'+nametable+symtable
+	datastart=int(fread('_alyt.repack.meta/alyt.elfnl'))
+	hdrdata=ltbl+lmtl+lfnl
+	padding=(datastart-(len(hdrdata)+0x28))*'\x00'
+	hdrdata+=padding+nametable+symtable
 	data=hdrdata+sarc
 	lmtloffset=0x28+len(ltbl)
 	lfnloffset=lmtloffset+len(lmtl)
-	endlfnloffset=lfnloffset+len(lfnl)
 	hdrflag=int(fread('_alyt.repack.meta/alyt.flags'))
-	alytheader=struct.pack('<4sIIIIIIIII','ALYT',0x28,hdrflag,len(ltbl),lmtloffset,len(lmtl),lfnloffset,len(lfnl),endlfnloffset,len(data)+0x28)
+	alytheader=struct.pack('<4sIIIIIIIII','ALYT',hdrflag,0x28,len(ltbl),lmtloffset,len(lmtl),lfnloffset,len(lfnl),datastart,len(data)+0x28)
 	alyt=alytheader+data
 	finalname=fread('_alyt.repack.meta/alyt.bsname')+'.repacked'
 	os.chdir('..')
