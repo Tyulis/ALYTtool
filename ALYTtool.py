@@ -2,7 +2,6 @@
 import os
 import sys
 import struct
-from bflim import Bflim
 
 #to avoid always repeating this...
 def fwrite(content,filename,mode='w'):
@@ -27,44 +26,13 @@ def hexdump(b):
 def calc_hash(name, hash_multiplier):
 	result = 0
 	for c in name:
-		result = ord(c) + (result * hash_multiplier)
+		result = c + (result * hash_multiplier)
 		# ensure the result is a 32-bit value
 		result &= 0xFFFFFFFF
 	return result
 
-
-def convertpng():
-	os.chdir('timg')
-	print('Converting PNG files to BFLIM')
-	for p,d,files in os.walk(os.getcwd()):
-		for file in files:
-			if not file.endswith('.png'):
-				continue
-			bflim=Bflim(verbose=False, debug=False, big_endian=False, swizzle=4)
-			bflim.load(file)
-			bflim.save(file.replace('.png','.bflim'))
-	print('Converted.')
-	os.chdir('..')
-
-def convertbflim():
-	os.chdir('timg')
-	print('Converting BFLIM files to PNG')
-	for p,d,files in os.walk(os.getcwd()):
-		for file in files:
-			if not file.endswith('.bflim'):
-				continue
-			bflim=Bflim(verbose=False, debug=False, big_endian=False, swizzle=4)
-			bflim.read(file, parse_image=True)
-			if bflim.invalid:
-				print('Invalid BFLIM file: %s'%file)
-				continue
-			bflim.extract()
-			os.remove(file)
-	print('Converted.')
-	os.chdir('..')
-
 def extract(alytfile):
-	alyt=bytearray(fread(alytfile,'rb'))
+	alyt=bytes(fread(alytfile,'rb'))
 	
 	try:
 		os.mkdir('_'+alytfile.split('.')[0])
@@ -135,7 +103,7 @@ def extract(alytfile):
 	log.write('\n'.join(symtable))
 	#i+=88
 	i=alyt[i:-1].index(b'SARC')+i
-	fwrite(alyt[bs:i],"_alyt.repack.meta/alyt.symtbl")
+	fwrite(alyt[bs:i],"_alyt.repack.meta/alyt.symtbl","wb")
 	sarchdata=struct.unpack('<4sHHIII',alyt[i:i+0x14])
 	log.write('\n')
 	log.write('SARC Header Data:\n')
@@ -178,7 +146,7 @@ def extract(alytfile):
 		log.write('File End Offset: %x\n'%fileend)
 		i+=0x10
 		sfatnodes.append(nodedata)
-	padinfo=''.join([chr(c) for c in padinfo])
+	padinfo=bytes(padinfo)
 	fwrite(padinfo,'_alyt.repack.meta/sarc.pad','wb')
 	log.write('\n')
 	log.write('SFNT Header Data:\n')
@@ -202,7 +170,7 @@ def extract(alytfile):
 				break
 		else:
 			zero=0
-			name+=chr(char)
+			name+=bytes((char,))
 	sfnt=alyt[bs:sfatnodes[0][2]]
 	fwrite(sfnt,'_alyt.repack.meta/alyt.sfnt','wb')
 	log.write('SFNT Data:\n')
@@ -226,7 +194,7 @@ def extract(alytfile):
 
 def repacksarc():
 	print('Repacking SARC section...')
-	sfnt=bytearray(fread('_alyt.repack.meta/alyt.sfnt','rb'))
+	sfnt=fread('_alyt.repack.meta/alyt.sfnt','rb')
 	hashmul=int(fread('_alyt.repack.meta/sfat.hashmul'))
 	sfntdata=[]
 	name=b''
@@ -243,11 +211,11 @@ def repacksarc():
 				break
 		else:
 			zero=0
-			name+=chr(char)
+			name+=bytes((char,))
 	sfntdata.sort()
-	sfntheader=struct.pack('<4sHH','SFNT',0x08,0x00)
+	sfntheader=struct.pack('<4sHH',b'SFNT',0x08,0x00)
 	sfatnodes=[]
-	filedata=''
+	filedata=b''
 	pointer=0
 	padinfo=fread('_alyt.repack.meta/sarc.pad','rb')
 	for i,info in enumerate(sfntdata):
@@ -255,19 +223,19 @@ def repacksarc():
 		filestart=pointer
 		fileend=filestart+len(content)
 		try:
-			padding=ord(padinfo[i])
+			padding=padinfo[i]
 		except IndexError:
 			padding=0
 		filedata+=content+(padding*b'\x00')
 		pointer+=len(content)+padding
 		node=[info[0],(info[1]|0x01000000),filestart,fileend]
 		sfatnodes.append(node)
-	sfattable=''.join([struct.pack('<IIII',*node) for node in sfatnodes])
-	sfatheader=struct.pack('<4sHHI','SFAT',0x0c,len(sfatnodes),hashmul)
+	sfattable=b''.join([struct.pack('<IIII',*node) for node in sfatnodes])
+	sfatheader=struct.pack('<4sHHI',b'SFAT',0x0c,len(sfatnodes),hashmul)
 	
 	headdata=sfatheader+sfattable+sfntheader+sfnt
 	sarcdata=headdata+filedata
-	sarcheader=struct.pack('<4sHHIII','SARC',0x14,0xfeff,len(sarcdata)+0x14,len(headdata)+0x14,0x00000100)
+	sarcheader=struct.pack('<4sHHIII',b'SARC',0x14,0xfeff,len(sarcdata)+0x14,len(headdata)+0x14,0x00000100)
 	sarc=sarcheader+sarcdata
 	return sarc,[el[2] for el in sfntdata]
 
@@ -284,13 +252,13 @@ def repack(folder):
 	nametable=struct.pack('<I',len(filenames))+nametable
 	datastart=int(fread('_alyt.repack.meta/alyt.elfnl'))
 	hdrdata=ltbl+lmtl+lfnl
-	padding=(datastart-(len(hdrdata)+0x28))*'\x00'
+	padding=(datastart-(len(hdrdata)+0x28))*b'\x00'
 	hdrdata+=padding+nametable+symtable
 	data=hdrdata+sarc
 	lmtloffset=0x28+len(ltbl)
 	lfnloffset=lmtloffset+len(lmtl)
 	hdrflag=int(fread('_alyt.repack.meta/alyt.flags'))
-	alytheader=struct.pack('<4sIIIIIIIII','ALYT',hdrflag,0x28,len(ltbl),lmtloffset,len(lmtl),lfnloffset,len(lfnl),datastart,len(data)+0x28-datastart)
+	alytheader=struct.pack('<4sIIIIIIIII',b'ALYT',hdrflag,0x28,len(ltbl),lmtloffset,len(lmtl),lfnloffset,len(lfnl),datastart,len(data)+0x28-datastart)
 	alyt=alytheader+data
 	finalname=fread('_alyt.repack.meta/alyt.bsname')+'.repacked'
 	os.chdir('..')
@@ -311,16 +279,9 @@ if __name__=='__main__':
 		print('	-h : Shows this help')
 		print('	-x : Extracts an ALYT file in a folder')
 		print('	-p : Repack a previously extracted ALYT file from a folder')
-		print('	-c : Convert directly BFLIM files to PNG when extracting and PNG to BFLIM when repacking, using bflim.py from ObsidianX\'s 3dstools')
 		print('	file_name : ALYT file name when extracting and folder name when repacking')
 	if '-x' in args:
 		extract(filename)
-		if '-c' in args:
-			convertbflim()
 		os.chdir('..')
 	elif '-p' in args:
-		os.chdir(filename)
-		if '-c' in args:
-			convertpng()
-		os.chdir('..')
 		repack(filename)
