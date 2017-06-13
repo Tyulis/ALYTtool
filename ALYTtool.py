@@ -159,12 +159,17 @@ def extract(alytfile):
 	i+=0x0c
 	sfatnodes=[]
 	log.write('\n')
+	padinfo=[]
+	prevfileend=-1
 	for j in range(0,nodenum):
 		nodedata=list(struct.unpack('<IIII',alyt[i:i+0x10]))
 		namehash=nodedata[0]
 		nameoffset=nodedata[1]
+		if prevfileend!=-1: #=not the first
+			padinfo.append(nodedata[2]-prevfileend)
 		nodedata[2]+=dataoffset
 		filebegin=nodedata[2]
+		prevfileend=nodedata[3]
 		nodedata[3]+=dataoffset
 		fileend=nodedata[3]+dataoffset
 		log.write('SFAT Node %x\n:'%namehash)
@@ -173,6 +178,8 @@ def extract(alytfile):
 		log.write('File End Offset: %x\n'%fileend)
 		i+=0x10
 		sfatnodes.append(nodedata)
+	padinfo=''.join([chr(c) for c in padinfo])
+	fwrite(padinfo,'_alyt.repack.meta/sarc.pad','wb')
 	log.write('\n')
 	log.write('SFNT Header Data:\n')
 	sfnthdata=struct.unpack('<4sHH',alyt[i:i+8])
@@ -242,12 +249,16 @@ def repacksarc():
 	sfatnodes=[]
 	filedata=''
 	pointer=0
+	padinfo=fread('_alyt.repack.meta/sarc.pad','rb')
 	for i,info in enumerate(sfntdata):
 		content=fread(info[2],'rb')
 		filestart=pointer
-		padding=0x04-(len(content)%0x04)
+		fileend=filestart+len(content)
+		try:
+			padding=ord(padinfo[i])
+		except IndexError:
+			padding=0
 		filedata+=content+(padding*b'\x00')
-		fileend=filestart+len(content)+padding
 		pointer+=len(content)+padding
 		node=[info[0],(info[1]|0x01000000),filestart,fileend]
 		sfatnodes.append(node)
@@ -279,7 +290,7 @@ def repack(folder):
 	lmtloffset=0x28+len(ltbl)
 	lfnloffset=lmtloffset+len(lmtl)
 	hdrflag=int(fread('_alyt.repack.meta/alyt.flags'))
-	alytheader=struct.pack('<4sIIIIIIIII','ALYT',hdrflag,0x28,len(ltbl),lmtloffset,len(lmtl),lfnloffset,len(lfnl),datastart,len(data)+0x28)
+	alytheader=struct.pack('<4sIIIIIIIII','ALYT',hdrflag,0x28,len(ltbl),lmtloffset,len(lmtl),lfnloffset,len(lfnl),datastart,len(data)+0x28-datastart)
 	alyt=alytheader+data
 	finalname=fread('_alyt.repack.meta/alyt.bsname')+'.repacked'
 	os.chdir('..')
