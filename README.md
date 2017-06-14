@@ -12,3 +12,5 @@ Usage:
 		python3 ALYTtool.py -p <folder name>
 
 Documentation about ALYT file format can be found in the ALYT_ref.txt file
+
+You can convert between BFLIM and PNG using [ObsidianX's 3dstools](www.github.com/ObsidianX/3dstools)
