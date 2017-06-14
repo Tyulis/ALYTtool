@@ -1,0 +1,34 @@
+-----------------ALYT (Archived LaYouT?) file format documentation-----------------
+Written by Tyulis. I have found all informations descripted here
+
+All values are little endian
+
+First, an ALYT Header:
+	Offset (relative) | Size (in bytes) | Description
+	-------------------------------------------------
+	0x00              | 4               | Magic string (Always "ALYT")
+	0x04              | 4               | Undetermined (seems to be always 0x02000400)
+	0x08              | 4               | ALYT header length (0x28)
+	0x0C              | 4               | LTBL section's length
+	0x10              | 4               | End offset of LTBL section
+	0x14              | 4               | LMTL section's length
+	0x18              | 4               | End offset of LMTL section
+	0x1C              | 4               | LFNL section's length
+	0x20              | 4               | End offset of LFNL section
+	0x24              | 4               | file length (from the end of LFNL section)
+
+Then, 3 sections named LTBL, LMTL and LFNL
+	Offset (relative) | Size (in bytes)      | Description
+	-------------------------------------------------
+	0x00              | 4                    | Magic (name of the section)
+	0x04              | 4                    | Flags? This number is the same in the 3 sections, but is different between different files
+	0x08              | to the section's end | Data. Purpose undetermined
+
+A file names table. Purpose undetermined
+Entries are ASCII file names, without folder, and padded with null bytes to fill 64 bytes
+
+A string table, seems to be symbols (these strings can be found in the contained BFLYT and BFLAN file)
+Entries are ASCII strings, and padded with null bytes to fill 32 bytes
+
+Then, there is a variable padding, and a standard SARC section, which contains files. You can find a full documentation on SARC format on http://3dbrew.org/wiki/SARC
+In this section, all offsets are relative to the start of the SARC section
