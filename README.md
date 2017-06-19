@@ -13,4 +13,4 @@ Usage:
 
 Documentation about ALYT file format can be found in the ALYT_ref.txt file
 
-You can convert between BFLIM and PNG using [ObsidianX's 3dstools](www.github.com/ObsidianX/3dstools) (needs Python 2.7, [PyPNG](https://pypi.python.org/pypi/pypng/0.0.18), OpenCV for swizzling)
+You can convert between BFLIM and PNG using [ObsidianX's 3dstools](https://www.github.com/ObsidianX/3dstools) (needs Python 2.7, [PyPNG](https://github.com/drj11/pypng), OpenCV for swizzling)
