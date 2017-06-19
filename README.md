@@ -13,4 +13,10 @@ Usage:
 
 Documentation about ALYT file format can be found in the ALYT_ref.txt file
 
+I put the ALYT files that I found in the files.txt file.
+
+Each entry is of the form:
+
+	<path in the romfs>: <file name in the extracted GARC>: <content description>
+
 You can convert between BFLIM and PNG using [ObsidianX's 3dstools](https://www.github.com/ObsidianX/3dstools) (needs Python 2.7, [PyPNG](https://github.com/drj11/pypng), OpenCV for swizzling)
