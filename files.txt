@@ -1,0 +1,12 @@
+a/0/2/7: dec_0.bin: fade effects (when finishing a cutscene with skulls, for example)
+a/0/6/4: dec_0.bin: various UI elements, notably for the party menu
+a/0/6/5-6-8: Various UI elements
+a/0/7/0: dec_0.bin: various UI elements (just a few buttons)
+a/0/7/1: dec_0.bin: List menus elements and cursors
+a/0/7/4: dec_0.bin: various windows
+a/0/7/5: dec_0.bin: Various UI elements for network (GTS...)
+a/0/9/9: 00-08.bin: Ride tutorials
+a/0/9/9: 09-17.bin: Intro logo effects for moon
+a/0/9/9: 18-26.bin: Intro logo effects for sun
+a/0/9/9: 27.bin: Town names elements
+a/0/9/9: 28.bin: Z-move tutorial
