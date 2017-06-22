@@ -1,0 +1,18 @@
+------------------------BL archive format description------------------------
+
+This is a description of the structure of the BL (?) archive file format.
+I found these files in the Pokémon Sun and Moon games files, and I named it because of their magic number "BL".
+These files are very simple archives, without file names support.
+
+Header:
+	Offset            | Size (in bytes) | Description
+	-------------------------------------------------
+	0x00              | 2               | Magic string (Always "BL")
+	0x02              | 2               | Number of files
+
+Then an offset table, where each entry is a 4 bytes offset from the start of the file. Each offset is the start offset of a file.
+The last offset is the BL file's end.
+
+The block header+table is padded to 0x80 bytes
+
+Then, directly the files data. Each file is 0x80 bytes aligned
