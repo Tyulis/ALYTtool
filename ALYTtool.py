@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 import os
 import sys
+import shutil
 import struct
 
 #to avoid always repeating this...
@@ -31,25 +32,38 @@ def calc_hash(name, hash_multiplier):
 		result &= 0xFFFFFFFF
 	return result
 
-def extract(alytfile):
-	alyt=bytes(fread(alytfile,'rb'))
-	
+def extractALYT(alyt,name):
+	if '.' in name: #ugly. But it permit to avoid problems with BL files.
+		folder='_'+'.'.join(name.replace('/','-').split('.')[0:-1])
+	else:
+		folder='_'+name
 	try:
-		os.mkdir('_'+alytfile.split('.')[0])
+		os.mkdir(folder)
 	except OSError:
 		pass
-	os.chdir('_'+alytfile.split('.')[0])
+	os.chdir(folder)
 	try:
 		os.mkdir('_alyt.repack.meta')
 	except:
 		pass
-	fwrite(alytfile,'_alyt.repack.meta/alyt.bsname')
+	fwrite(name,'_alyt.repack.meta/alyt.bsname')
 	log=open('_alyt.repack.meta/extract.log','w')
 	
 	print('Reading data...')
 	alytheader=alyt[0:0x28]
 	log.write('Header data:\n')
-	alythdata=struct.unpack('<4sIIIIIIIII',alytheader)
+	try:
+		alythdata=struct.unpack('<4sIIIIIIIII',alytheader)
+	except struct.error: #for too short files
+		print('Not a valid ALYT file')
+		os.chdir('..')
+		shutil.rmtree(folder)
+		return 17 #Don't ask, it's random
+	if alythdata[0]!=b'ALYT':
+		print('Not a valid ALYT file')
+		os.chdir('..')
+		shutil.rmtree(folder)
+		return 17
 	log.write('Magic: %s\n'%alythdata[0])
 	fwrite(str(alythdata[1]),'_alyt.repack.meta/alyt.flags')#undetermined, but don't take risk
 	log.write('Header length: %d\n'%alythdata[2])
@@ -101,7 +115,6 @@ def extract(alytfile):
 	log.write('\n')
 	log.write('Symbol names? (number: %d)\n'%len(symtable))
 	log.write('\n'.join(symtable))
-	#i+=88
 	i=alyt[i:-1].index(b'SARC')+i
 	fwrite(alyt[bs:i],"_alyt.repack.meta/alyt.symtbl","wb")
 	sarchdata=struct.unpack('<4sHHIII',alyt[i:i+0x14])
@@ -191,8 +204,42 @@ def extract(alytfile):
 		log.write('Extracted %s\n'%filename)
 	log.close()
 	print('Finished extracting.')
+	os.chdir('..')
 
-def repacksarc():
+def extract(filename):
+	data=fread(filename,'rb')
+	if data.startswith(b'ALYT'):
+		print('ALYT file found')
+		extractALYT(data,filename)
+	elif data.startswith(b'BL'):
+		print('BL file found')
+		table=data[4:0x80]
+		folder='BL-'+'.'.join(filename.replace('/','-').split('.')[0:-1])+'/'
+		try:
+			os.mkdir(folder)
+		except FileExistsError:
+			shutil.rmtree(folder)
+			os.mkdir(folder)
+		fwrite(filename,folder+'.BL_name')
+		offsets=[struct.unpack('<I',table[i:i+4])[0] for i in range(0,len(table),4)]
+		offsets=[offset for offset in offsets if offset!=0] #remove the 00000000 offsets which are after the table end
+		del offsets[-1] #because the last offset is the file end, not a subfile offset
+		index=0
+		for i,fileoffset in enumerate(offsets):
+			if i!=len(offsets)-1: #for the normal files
+				filedata=data[fileoffset:offsets[i+1]]
+			else: #and for the last in the archive
+				filedata=data[fileoffset:]
+			res=extractALYT(filedata,str(index))
+			if res!=17:
+				alytfolder='_'+str(index)
+				os.rename(alytfolder, folder+str(index))
+			else:
+				fwrite(filedata, folder+str(index)+'.bin', 'wb')
+			index+=1
+		
+
+def repackSARC():
 	print('Repacking SARC section...')
 	sfnt=fread('_alyt.repack.meta/alyt.sfnt','rb')
 	hashmul=int(fread('_alyt.repack.meta/sfat.hashmul'))
@@ -239,9 +286,9 @@ def repacksarc():
 	sarc=sarcheader+sarcdata
 	return sarc,[el[2] for el in sfntdata]
 
-def repack(folder):
+def repackALYT(folder):
 	os.chdir(folder)
-	sarc,filenames=repacksarc()
+	sarc,filenames=repackSARC()
 	print('Repacking ALYT file...')
 	ltbl=fread('_alyt.repack.meta/alyt.ltbl','rb')
 	lmtl=fread('_alyt.repack.meta/alyt.lmtl','rb')
@@ -265,6 +312,49 @@ def repack(folder):
 	fwrite(alyt,finalname,'wb')
 	print('Finished!')
 	return 0
+
+def repackBL(folder):
+	print('Repacking the BL archive...')
+	for path, folders, files in os.walk(folder): #to get the content of the folder
+		break
+	os.chdir(folder)
+	files=[f for f in files if f.endswith('.bin')]
+	filesnumber=len(files)+len(folders)
+	subfiles=[None]*filesnumber
+	print('Repacking ALYT files...')
+	for alytfolder in folders:
+		repackALYT(alytfolder)
+		subfiles[int(alytfolder.lstrip('_'))]=fread(alytfolder.lstrip('_')+'.repacked','rb')
+	for otherfile in files:
+		subfiles[int(otherfile.split('.')[0])]=fread(otherfile.split('.')[0])
+	#now repacking.
+	print('Repacking the BL file...')
+	magic=struct.pack('<2sH',b'BL',filesnumber) #magic+files number
+	table=b''
+	data=b''
+	for filedata in subfiles:
+		padding=0x80-(len(filedata)%0x80)
+		filedata+=b'\x00'*padding
+		table+=struct.pack('<I',0x80+len(data))
+		data+=filedata
+	table+=struct.pack('<I',0x80+len(data)) #the last offset is the BL file's end
+	header=magic+table
+	hdrpadding=0x80-(len(header)%0x80)
+	header+=b'\x00'*hdrpadding
+	final=header+data
+	finalname=fread('.BL_name')+'.repacked'
+	os.chdir('..')
+	fwrite(final,finalname,'wb')
+	print('Finished!')
+		
+
+def repack(folder):
+	if not folder.endswith('/'): #more practical.
+		folder+='/'
+	if os.path.exists(folder+'.BL_name'):
+		repackBL(folder)
+	else:
+		repackALYT(folder)
 	
 if __name__=='__main__':
 	args=sys.argv[1:-1]
@@ -282,6 +372,5 @@ if __name__=='__main__':
 		print('	file_name : ALYT file name when extracting and folder name when repacking')
 	if '-x' in args:
 		extract(filename)
-		os.chdir('..')
 	elif '-p' in args:
 		repack(filename)
