@@ -217,7 +217,7 @@ def extract(filename):
 		folder='BL-'+'.'.join(filename.replace('/','-').split('.')[0:-1])+'/'
 		try:
 			os.mkdir(folder)
-		except FileExistsError:
+		except:
 			shutil.rmtree(folder)
 			os.mkdir(folder)
 		fwrite(filename,folder+'.BL_name')
@@ -237,6 +237,9 @@ def extract(filename):
 			else:
 				fwrite(filedata, folder+str(index)+'.bin', 'wb')
 			index+=1
+	else:
+		print('Unrecognized file.')
+		return 11
 		
 
 def repackSARC():

@@ -1,5 +1,6 @@
 I found the following data in the Pokémon Moon files. Don't know if they are identic in Sun (Probably identic.)
-The files names are the names of the files extracted from the GARCs by the pk3DS GARC (Un)Packer
+The files names are the names of the files extracted from the GARCs by the pk3DS GARC (Un)Packer.
+In BL files, the folders names are indexes upacked by ALYTtool
 ALYT files have been tested until a/1/3/4
 
 When separated between languages (if every case have the same organisation):
@@ -78,9 +79,9 @@ a/1/2/0: 00.bin:       contains readable content (?)
          others:       SESD files
 a/1/2/1: dec_0.bin:    ??? Model?
 a/1/2/2: all:          ALYT - PGL synchronization?
-a/1/2/3: dec_0.bin:    Magic: BL. Contains ALYT files. Contains files about picturebook
+a/1/2/3: dec_0.bin:    BL: Picture book? Appears to be Pokedex elements.
 a/1/2/4: all:          Strangely packed single-file SARC files, which contains a BFLIM image
-a/1/2/6: all:          ALYT - Festival place buttons, windows and backgrounds
+a/1/2/6: all:          ALYT - Festival plaza buttons, windows and backgrounds
 a/1/2/7: all:          ALYT - Link Battle settings UI? Separated between languages
 a/1/2/9: all:          ALYT - Information windows?
 a/1/3/0: all:          ALYT - Appears to be team selection UI and battle boxes palettes
@@ -90,18 +91,46 @@ a/1/3/2: 0:
 a/1/3/3: all:          ALYT - ??? Evolution message window and his cursor?
 a/1/3/4: all:          ALYT - QR Scanner UI
 a/1/3/5: dec_00.bin:   ALYT - ??? (1 file named Box_EFF_00)
-         dec_01.bin:   ALYT - Box selector effects (when yo click on the cube button in your PC)
-         dec_02.bin:   BL - Not tested yet
+         dec_01.bin:   ALYT - PC Boxes top screen background effects
+         dec_02.bin:   BL:
+				0: ???
+				1: PC boxes top screen background effects (too??)
+				2: PC box selector icons
+				3: PC boxes backgrounds and name windows
+				4: PC bottom screen UI, battle boxes backgrouds and PC boxes backgrounds (too??)
+				5: PC top screen UI
+         dec_03.bin:   ALYT - ???
+         dec_04.bin:   ALYT - PC box selector icons (too??)
+         dec_05.bin:   ALYT - PC boxes backgrounds and name windows (too??)
+         dec_06.bin:   ALYT - PC bottom screen UI, battle boxes backgrouds and PC boxes backgrounds (too???)
+         dec_07.bin:   ALYT - ???
+         dec_08.bin:   ALYT - just a basic window
+         dec_09.bin:   ALYT - PC top screen UI (but it's the one in the BL file which is used...)
+         dec_10.bin:   ALYT - Link trade top screen UI
+a/1/3/6: all:          ??? Magic: BD
+a/1/3/7: all:          ???
+a/1/3/8: all:          ALYT - Launching options (choice between mystery gift, live competitions and continue game)
+a/1/3/9: all:          ???
 a/1/4/0: all:          ???
+a/1/4/3: all:          ALYT - Language selection elements and images
 a/1/4/8: all:          ???
 a/1/5/0: all:          ???
-a/1/5/2: all:          ??? (Alphabetic keyboard organisations?)
-a/1/5/4: all:          BFLIM images
-a/1/5/9: all:          830 BFLIM images
+a/1/5/1: all:          ALYT - Saving screen elements
+a/1/5/2: all:          ???
+a/1/5/3: all:          ALYT - ???
+a/1/5/4: all:          BFLIM trainers' battle sprite (when starting a battle)
+a/1/5/6: all:          ALYT - Map elements?
+a/1/5/7: all:          ALYT - ???
+a/1/5/8: all:          ALYT - Skin selection images
+a/1/5/9: all:          830 BFLIM zoomed map sections
+a/1/6/0: all:          ALYT - ??? (If anyone can identify this image, help needed)
+a/1/6/1: all:          ALYT - Quick match icons
 a/1/6/2: all:          ??? Models?
 a/1/6/3: all:          ??? Models?
 a/1/6/4: all:          ??? Models?
 a/1/6/5: all:          ??? Models?
+a/1/6/6: all:          ALYT - Battle videos UI
+a/1/6/7: all:          ALYT - ???
 a/1/6/8: dec_0.bin:    An ALYT file!
          dec_1.bin:    an SPBD file
 a/1/6/9: all:          Strangely packed single-file SARC files, which contains BFLIM images
@@ -110,25 +139,58 @@ a/1/8:   all:          ??? Magic: CM. Models? + Thousands of 8/12-bytes files
 a/1/9:   all:          ??? Magic: CM. Models? + Thousands of 8/12-bytes files
 a/2/0:   all:          ??? Magic: CM. Models? + Thousands of 8/12/16/20-bytes files
 a/2/1:   all:          ??? Magic: CM. Models? + Thousands of 8/12/16/20-bytes files
-a/2/2/4: all:          1 BFLIM image.
+a/2/2/2: all:          ALYT - Shop UI
+a/2/2/3: all:          ALYT - Clothes shop UI
+a/2/2/4: all:          1 BFLIM image (If anyone can identify this image, help needed)
 a/2/2/5: all:          SMDH file (title infos: author, name in different languages...)
 a/2/2/7: all:          ???
+a/2/2/8: all:          ALYT - Festival plaza quests/PGL UI
+a/2/2/9: all:          ALYT - Festival plaza UI elements (visitors list?)
+a/2/3/0: all:          ALYT - same comment
+a/2/3/1: all:          ALYT - Festival plaza bottom screen UI
 a/2/3/2: all:          ???
+a/2/3/4: dec_0.bin:    ALYT - Map UI, islands maps, zones frames and masks
+         dec_1.bin:    ALYT - Map photos (on top screen when zones are pointed), new island screen elements
 a/2/3/6: all:          ???
+a/2/3/7: all:          ALYT - Other quick match screen elements (?), with blue waves top screen background
+a/2/3/8: 00.bin:       ALYT - Battle Royal UI
+         01-02.bin:    ALYT - Hall of fame effects and text (Japanese. Both appear to be similar)
+         03.bin:       ALYT - New island screen images and island names (japanese)
+         04.bin:       ALYT - Great trials stamps and trial starting animation (japanese)
+         05.bin:       ALYT - Trial ending animation
+         06.bin:       ALYT - Files names suggest that it is trial start or end animation, but only blank images
+         07.bin:       ALYT - Files names suggest that it is Moon title screen, but only blank images
+         08.bin:       ALYT - Files names suggest that it is Sun title screen, but only blank images
+         09.bin:       ALYT - Files names suggest that it is towns names, but only blank images
+         10.bin:       ALYT - VS texts and images
+a/2/3/9: all:          ALYT - Battle royal images. Separated between languages
 a/2/4/0: all:          ??? (Models?)
 a/2/4/1: all:          ???
+a/2/4/2: all:          ALYT - Poke finder UI (photo chooser, comments, backgrounds...)
 a/2/4/4: all:          ???
+a/2/4/6: all:          ALYT - Poke refresh UI elements and images
+a/2/4/7: all:          ALYT - Trainer pass images and stamps
 a/2/4/8: all:          ???
-a/2/5/0: dec_0.bin:    An ALYT file!
+a/2/4/9: dec_00.bin:   ALYT - Trainer Encounter animation? (Not sure at all)
+         dec_02.bin:   ALYT - Festival plaza windows
+         dec_03.bin:   ALYT - Rotom-dex presentation (by Kukui, at the game's beginning)
+         dec_04.bin:   ALYT - Top screen elements while saving the game
+         dec_05-07.bin:ALYT - Rare items icons (displayed when getting them). A few blank images in dec_07.bin
+         dec_08.bin:   ALYT - Blank rare items icons...
+         01:           ALYT - Trial starting animation and effects. Separated between languages
+a/2/5/0: dec_0.bin:    ALYT - Poke refresh icons and backgrounds
          dec_1.bin:    an SPBD file
 a/2/5/1: all:          ??? (Magic: UE)
 a/2/5/2: all:          idem
 a/2/5/3: all:          ??? (textures?)
+a/2/5/5: all:          ALYT - Keyboard inputs elements?
+a/2/5/6: all:          ALYT - some Battle tree UI elements
 a/2/5/8: all:          ???
-a/2/6/0: all:          48 BFLIM images
+a/2/6/0: all:          48 BFLIM images (if anyone can identify them, help needed)
 a/2/6/1: all:          ???
-a/2/6/2: all:          ??? Magic: WE. Readable content suggest that it's lighting data ("EnvDirLight","EnvAmbLight"...)
+a/2/6/2: all:          ??? Magic: WE. Readable content suggest that it's light data ("EnvDirLight","EnvAmbLight"...)
 a/2/6/3: all:          ???
+a/2/6/4: all:          ALYT - Some network windows? Separated between languages
 a/2/6/7: all:          ???
 a/2/6/8: all:          ??? Magic: BG. Readable content suggest that it's camera data ("camera1","camera2"...)
 a/2/6/9: all:          BFLIM images
