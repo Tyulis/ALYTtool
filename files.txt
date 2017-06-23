@@ -1,7 +1,6 @@
 I found the following data in the Pokémon Moon files. Don't know if they are identic in Sun (Probably identic.)
 The files names are the names of the files extracted from the GARCs by the pk3DS GARC (Un)Packer.
 In BL files, the folders names are indexes upacked by ALYTtool
-ALYT files have been tested until a/1/3/4
 
 When separated between languages (if every case have the same organisation):
 	00: Japanese
@@ -156,7 +155,7 @@ a/2/3/7: all:          ALYT - Other quick match screen elements (?), with blue w
 a/2/3/8: 00.bin:       ALYT - Battle Royal UI
          01-02.bin:    ALYT - Hall of fame effects and text (Japanese. Both appear to be similar)
          03.bin:       ALYT - New island screen images and island names (japanese)
-         04.bin:       ALYT - Great trials stamps and trial starting animation (japanese)
+         04.bin:       ALYT - Grand trials stamps and trial starting animation (japanese)
          05.bin:       ALYT - Trial ending animation
          06.bin:       ALYT - Files names suggest that it is trial start or end animation, but only blank images
          07.bin:       ALYT - Files names suggest that it is Moon title screen, but only blank images
@@ -191,25 +190,40 @@ a/2/6/1: all:          ???
 a/2/6/2: all:          ??? Magic: WE. Readable content suggest that it's light data ("EnvDirLight","EnvAmbLight"...)
 a/2/6/3: all:          ???
 a/2/6/4: all:          ALYT - Some network windows? Separated between languages
+a/2/6/6: all:          ALYT - ???
 a/2/6/7: all:          ???
 a/2/6/8: all:          ??? Magic: BG. Readable content suggest that it's camera data ("camera1","camera2"...)
-a/2/6/9: all:          BFLIM images
+a/2/6/9: all:          BFLIM pokémons images, shiny and not shiny, for pokemon center screen while healing.
+a/2/7/0: all:          ALYT - Pokémon stats graph elements
 a/2/7/1: all:          ???
 a/2/7/2: all:          ???
 a/2/7/3: all:          ???
 a/2/7/4: all:          ???
 a/2/7/5: all:          ???
-a/2/8/1: all:          BFLIM images
+a/2/7/6: all:          ALYT - Some images for end credits?
+a/2/8/1: all:          BFLIM images for end credits
+a/2/8/2: all:          ALYT - pokedex languages IDs, main title "Pokedex" and "Registered" text (when catching a new pokémon). Separated between languages
+a/2/8/3: all:          ALYT - some rotomdex elements
+a/2/8/4: all:          ALYT - Festival plaza quests UI and images
+a/2/8/5: all:          ALYT - "THE END" text. Separated between languages, but always in English
 a/2/8/6: all:          DVLB files (shaders in SHBIN format)
 a/2/8/7: all:          SPBD files
-a/2/8/8: all:          1 strangely packed ALYT file
+a/2/8/8: all:          BL - The BFLYT files names suggest that it is the save clearing menu UI
 a/2/8/9: all:          SPBD files
-a/2/9/1: all:          BFLIM images
+a/2/9/1: all:          BFLIM images of poké beans
 a/2/9/2: all:          ??? (Models?)
+a/2/9/3: all:          Same as a/2/3/8, in Chinese (simplified)
+a/2/9/4: all:          Same as a/2/3/8, in German
+a/2/9/5: all:          Same as a/2/3/8, in Spanish
+a/2/9/6: all:          Same as a/2/3/8, in French
+a/2/9/7: all:          Same as a/2/3/8, in Italian
+a/2/9/8: all:          Same as a/2/3/8, in Korean
+a/2/9/9: all:          Same as a/2/3/8, in Chinese (traditional)
+a/3/0/0: all:          Same as a/2/3/8, in English
 a/3/0/2: all:          ???
-a/3/0/4: all:          1 strangely packed ALYT files
-
-
-
-
-
+a/3/0/4: all:          BL - Hall of fame effects and text, separated between languages. 0=Japanese, 1=Simplified Chinese, 2=German, 3=Spanish, 
+                                         4=Spanish (too?), 5=French, 6=Italian, 7=Italian (too??), 8=Korean, 9=Traditional Chinese, 10=English
+a/3/0/5: all:          ALYT - Keyboard types icons (uppercase, lowercase, others)
+a/3/0/6: all:          ALYT - Staff roll background and ending photo (different depending on the player's skin)
+a/3/0/7: all:          ALYT - "The End" text. Separated between languages
+a/3/0/8: all:          ALYT - "ver. x" text, for the Poké finder version
