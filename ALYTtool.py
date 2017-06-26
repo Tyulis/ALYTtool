@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python2
 import os
 import sys
 import shutil
@@ -77,17 +77,17 @@ def extractALYT(alyt,name):
 	log.write('\n')
 	i=alythdata[2]
 	ltbl=alyt[i:i+alythdata[3]]
-	log.write('LTBL Chunk (%d;0x%x) lenght)\n'%(len(ltbl),len(ltbl)))
+	log.write('LTBL Chunk (%d;0x%x) lenght -> %d without header)\n'%(len(ltbl),len(ltbl),len(ltbl)-8))
 	fwrite(ltbl,'_alyt.repack.meta/alyt.ltbl','wb')
 	log.write('\n')
 	i+=alythdata[3]
 	lmtl=alyt[i:i+alythdata[5]]
-	log.write('LMTL Chunk (%d;0x%x) lenght)\n'%(len(lmtl),len(lmtl)))
+	log.write('LMTL Chunk (%d;0x%x) lenght -> %d without header)\n'%(len(lmtl),len(lmtl),len(lmtl)-8))
 	fwrite(lmtl,'_alyt.repack.meta/alyt.lmtl','wb')
 	log.write('\n')
 	i+=alythdata[5]
 	lfnl=alyt[i:i+alythdata[7]]
-	log.write('LFNL Chunk (%d;0x%x) lenght)\n'%(len(lfnl),len(lfnl)))
+	log.write('LFNL Chunk (%d;0x%x) lenght -> %d without header)\n'%(len(lfnl),len(lfnl),len(lfnl)-8))
 	fwrite(lfnl,'_alyt.repack.meta/alyt.lfnl','wb')
 	i+=alythdata[7]
 	
@@ -113,13 +113,13 @@ def extractALYT(alyt,name):
 		symtable.append(alyt[i:i+32].rstrip(b'\x00').decode('utf-8'))
 		i+=32
 	log.write('\n')
-	log.write('Symbol names? (number: %d)\n'%len(symtable))
+	log.write('\nSymbol names? (number: %d)\n'%len(symtable))
 	log.write('\n'.join(symtable))
 	i=alyt[i:-1].index(b'SARC')+i
 	fwrite(alyt[bs:i],"_alyt.repack.meta/alyt.symtbl","wb")
 	sarchdata=struct.unpack('<4sHHIII',alyt[i:i+0x14])
 	log.write('\n')
-	log.write('SARC Header Data:\n')
+	log.write('\nSARC Header Data:\n')
 	log.write('Magic: %s\n'%sarchdata[0])
 	log.write('Header Length: %d\n'%sarchdata[1])
 	log.write('Byte order: %s Endian\n'%('Big' if sarchdata[2]==0xfffe else 'Little'))#read little endian, so reversed
