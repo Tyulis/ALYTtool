@@ -17,12 +17,12 @@ First, an ALYT Header:
 	0x20              | 4               | End offset of LFNL section
 	0x24              | 4               | file length (from the end of LFNL section)
 
-Then, 3 sections named LTBL, LMTL and LFNL
+Then, 3 sections named LTBL, LMTL and LFNL, with a similar header:
 	Offset (relative) | Size (in bytes)      | Description
 	-------------------------------------------------
 	0x00              | 4                    | Magic (name of the section)
-	0x04              | 4                    | Flags? This number is the same in the 3 sections, but is different between different files
-	0x08              | to the section's end | Data. Purpose undetermined
+	0x04              | 2                    | Unknown
+	0x06              | 2                    | Appears to be the number of BFLYT files in the archive
 
 A file names table. Purpose undetermined
 Entries are ASCII file names, without folder, and padded with null bytes to fill 64 bytes
