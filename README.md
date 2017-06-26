@@ -50,3 +50,10 @@ To convert all BFLIM files contained in a folder:
 	python3 folder-bflim.py <folder>
 
 bflim.py is a slightly modified version of the [ObsidianX's original](http://www.github.com/ObsidianX/3dstools) to support python3, with various minor changes.
+
+The bflyt.py script is a tool to convert between BFLYT files and a homemade readable format (TFLYT for Text caFe LaYouT, opposite of Binary caFe LaYouT), editable in a text editor like Notepad++, Gedit... It is inspirated by [Diddy 81's BenzinU](https://gbatemp.net/threads/benzinu-release.423171), with support of 3DS format and many fixes and optimisations.
+
+	python3 bflyt.py [-x | -p] <input file>
+
+-x: convert from BFLYT to TFLYT
+-p: convert from TFLYT to BFLYT (not actually possible, but in a near future)
