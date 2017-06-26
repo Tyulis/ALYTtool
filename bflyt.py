@@ -197,6 +197,52 @@ class TypeReader (object):
 			if format=='RGBA8':
 				final['ALPHA']=a
 		return final
+	
+class TypeWriter (object):
+	def uint8(self,data):
+		return struct.pack('%sB'%self.byteorder,data)
+	def uint16(self,data):
+		return struct.pack('%sH'%self.byteorder,data)
+	def uint32(self,data):
+		return struct.pack('%sI'%self.byteorder,data)
+	def int8(self,data):
+		return struct.pack('%sb'%self.byteorder,data)
+	def int16(self,data):
+		return struct.pack('%sh'%self.byteorder,data)
+	def int32(self,data):
+		return struct.pack('%si'%self.byteorder,data)
+	def float32(self,data):
+		return struct.pack('%sf'%self.byteorder,data)
+	def string(self,data,align=0):
+		s=data.encode('ascii')+b'\x00'
+		pad=self.pad(align-len(s))
+		return s+pad
+	def string4(self,data):
+		s=data.encode('ascii')+b'\x00'
+		pad=self.pad(4-(len(s)%4))
+		return s+pad
+	def pad(self,num):
+		return b'\x00'*num
+	def sechdr(self,data,magic):
+		magic=magic.encode('ascii')
+		length=len(data)+8
+		return magic+self.uint32(length)
+	def color(self,data,format):
+		format=format.upper()
+		out=b''
+		if format in ('RGB8','RGBA8'):
+			out+=self.uint8(data['RED'])
+			out+=self.uint8(data['BLUE'])
+			out+=self.uint8(data['GREEN'])
+			if format=='RGBA8':
+				out+=self.uint8(data['ALPHA'])
+		return out
+	def magiccount(self,data,magic):
+		count=0
+		for key in data.keys():
+			if key.split('-')[0]==magic:
+				count+=1
+		return count
 
 class frombflyt(ClsFunc, TypeReader):
 	def main(self,data):
@@ -224,6 +270,7 @@ class frombflyt(ClsFunc, TypeReader):
 	def parsedata(self):
 		ptr=0
 		self.tree=OrderedDict()
+		self.tree['byte-order']=self.byteorder
 		self.tree['BFLYT']=OrderedDict()
 		self.actnode=self.tree['BFLYT']# creates a pointer in the tree, which can change later
 		self.actnode['__pan1idx']=0
@@ -238,13 +285,13 @@ class frombflyt(ClsFunc, TypeReader):
 				print('Invalid section magic: %s'%magic)
 			method(chunk)
 			ptr+=size
-		return dump(self.tree,[OrderedDict])
+		return self.tree
 	
 	def readlyt1(self,data):
 		self.actnode['lyt1']=OrderedDict()
 		localnode=self.actnode['lyt1']
 		ptr=8
-		localnode['drawn-from-middle']=bool(data[ptr]); ptr+=4
+		localnode['drawn-from-middle']=bool(self.uint8(data,ptr)); ptr+=4
 		localnode['screen-width']=self.float32(data,ptr); ptr+=4
 		localnode['screen-height']=self.float32(data,ptr); ptr+=4
 		localnode['max-parts-width']=self.float32(data,ptr); ptr+=4
@@ -316,6 +363,9 @@ class frombflyt(ClsFunc, TypeReader):
 			flags=self.uint32(data,ptr); ptr+=4
 			if flags in (2069,2154): #to avoid many problems
 				flags^=0x0800
+				mat['false-0x800']=True
+			else:
+				mat['false-0x800']=False
 			texref=self.bit(flags,30,2)
 			textureSRT=self.bit(flags,28,2)
 			mappingSettings=self.bit(flags,26,2)
@@ -342,8 +392,8 @@ class frombflyt(ClsFunc, TypeReader):
 				flagnode['X-scale']=self.float32(data,ptr); ptr+=4
 				flagnode['Y-scale']=self.float32(data,ptr); ptr+=4
 			for i in range(0,mappingSettings):
-				mat['mapping-settings-%d'%i]=OrderedDict()
-				flagnode=mat['mapping-settings-%d'%i]
+				mat['mappingSettings-%d'%i]=OrderedDict()
+				flagnode=mat['mappingSettings-%d'%i]
 				flagnode['unknown-1']=self.uint8(data,ptr); ptr+=1
 				flagnode['mapping-method']=MAPPING_METHODS[self.uint8(data,ptr)]; ptr+=1
 				flagnode['unknown-2']=self.uint8(data,ptr); ptr+=1
@@ -354,8 +404,8 @@ class frombflyt(ClsFunc, TypeReader):
 				flagnode['unknown-7']=self.uint8(data,ptr); ptr+=1
 			
 			for i in range(0,textureCombiners):
-				mat['texture-combiner-%d'%i]=OrderedDict()
-				flagnode=mat['texture-combiner-%d'%i]
+				mat['textureCombiner-%d'%i]=OrderedDict()
+				flagnode=mat['textureCombiner-%d'%i]
 				flagnode['color-blend']=COLOR_BLENDS[self.uint8(data,ptr)]; ptr+=1
 				flagnode['alpha-blend']=BLENDS[self.uint8(data,ptr)]; ptr+=1
 				flagnode['unknown-1']=self.uint8(data,ptr); ptr+=1
@@ -369,15 +419,15 @@ class frombflyt(ClsFunc, TypeReader):
 				flagnode['unknown-3']=self.uint8(data,ptr); ptr+=1
 				flagnode['value']=self.float32(data,ptr); ptr+=4
 			for i in range(0,blendMode):
-				mat['blend-mode-%d'%i]=OrderedDict()
-				flagnode=mat['blend-mode-%d'%i]
+				mat['blendMode-%d'%i]=OrderedDict()
+				flagnode=mat['blendMode-%d'%i]
 				flagnode['blend-operation']=BLEND_CALC_OPS[self.uint8(data,ptr)]; ptr+=1
 				flagnode['source']=BLEND_CALC[self.uint8(data,ptr)]; ptr+=1
 				flagnode['destination']=BLEND_CALC[self.uint8(data,ptr)]; ptr+=1
 				flagnode['logical-operation']=LOGICAL_CALC_OPS[self.uint8(data,ptr)]; ptr+=1
 			for i in range(0,blendAlpha):
-				mat['blend-alpha-%d'%i]=OrderedDict()
-				flagnode=mat['blend-alpha']
+				mat['blendAlpha-%d'%i]=OrderedDict()
+				flagnode=mat['blendAlpha']
 				flagnode['blend-operation']=BLEND_CALC_OPS[self.uint8(data,ptr)]; ptr+=1
 				flagnode['source']=BLEND_CALC[self.uint8(data,ptr)]; ptr+=1
 				flagnode['destination']=BLEND_CALC[self.uint8(data,ptr)]; ptr+=1
@@ -389,8 +439,8 @@ class frombflyt(ClsFunc, TypeReader):
 				flagnode['X-warp']=self.float32(data,ptr); ptr+=4
 				flagnode['Y-warp']=self.float32(data,ptr); ptr+=4
 			for i in range(0,projectionMapping):
-				mat['projection-mapping-%d'%i]=OrderedDict()
-				flagnode=mat['projection-mapping-%d'%i]
+				mat['projectionMapping-%d'%i]=OrderedDict()
+				flagnode=mat['projectionMapping-%d'%i]
 				flagnode['X-translate']=self.float32(data,ptr); ptr+=4
 				flagnode['Y-translate']=self.float32(data,ptr); ptr+=4
 				flagnode['X-scale']=self.float32(data,ptr); ptr+=4
@@ -727,18 +777,21 @@ class frombflyt(ClsFunc, TypeReader):
 			dump=data[ptr:]
 			localnode['dump']=dump
 
-class tobflyt(ClsFunc):
+class tobflyt(ClsFunc, TypeWriter):
 	def main(self, tree):
-		if list(tree.keys())[0]!='BFLYT':
+		if list(tree.keys())[1]!='BFLYT':
 			print('This is not a converted BFLYT file')
 			sys.exit(3)
+		self.byteorder=tree['byte-order']
 		self.sections=tree['BFLYT']
 		self.final=b''
 		self.repackdata()
 		return self.final
 	
 	def repackdata(self):
-		for section in self.sections.keys():
+		return self.repacktree(self.sections)
+	def repacktree(self,tree):
+		for section in tree.keys():
 			magic=section.split('-')[0]
 			try:
 				method=eval('self.pack%s'%magic)
@@ -748,13 +801,92 @@ class tobflyt(ClsFunc):
 			self.final+=method(self.sections[section])
 
 	def packlyt1(self,data):
-		return b''
+		final=b''
+		final+=self.uint8(data['drawn-from-middle'])
+		final+=self.pad(3)
+		final+=self.float32(data['screen-width'])
+		final+=self.float32(data['screen-height'])
+		final+=self.float32(data['max-parts-width'])
+		final+=self.float32(data['max-parts-height'])
+		final+=self.string4(data['name'])
+		hdr=self.sechdr(final,'lyt1')
+		return hdr+final
 
 	def packtxl1(self,data):
-		return b''
-
+		final=b''
+		final+=self.uint16(data['texture-number'])
+		final+=self.uint16(0) #data offset. Seems to be always 0
+		filetable=b''
+		offsets=[]
+		filenames=data['file-names']
+		offset_tbl_length=len(filenames)*4
+		for name in filenames:
+			offsets.append(len(filetable)+offset_tbl_length)
+			filetable+=self.string(name)
+		offsettbl=b''
+		for offset in offsets:
+			offsettbl+=self.uint32(offset)
+		final+=offsettbl
+		final+=filetable
+		final+=self.pad(4-(len(final)%4))
+		hdr=self.sechdr(final,'txl1')
+		return hdr+final
+	
+	def packfnl1(self,data):
+		final=b''
+		final+=self.uint16(data['fonts-number'])
+		final+=self.uint16(0) #data offset. Seems to be always 0
+		filetable=b''
+		offsets=[]
+		filenames=data['file-names']
+		offset_tbl_length=len(filenames)*4
+		for name in filenames:
+			offsets.append(len(filetable)+offset_tbl_length)
+			filetable+=self.string(name)
+		offsettbl=b''
+		for offset in offsets:
+			offsettbl+=self.uint32(offset)
+		final+=offsettbl
+		final+=filetable
+		final+=self.pad(4-(len(final)%4))
+		hdr=self.sechdr(final,'fnl1')
+		return hdr+final
+		
+	
 	def packmat1(self,data):
-		return b''
+		final=b''
+		final+=self.uint16(data['materials-number'])
+		final+=self.uint16(0)
+		self.materials=data['materials']
+		offsets=[]
+		offset_tbl_length=len(self.materials)*4
+		matdata=b''
+		for mat in self.materials:
+			offsets.append(offset_tbl_length+len(matdata))
+			matsec=b''
+			matsec+=self.string(mat['name'],0x1C)
+			matsec+=self.color(mat['fore-color'],'RGBA8')
+			matsec+=self.color(mat['back-color'],'RGBA8')
+			flags=0
+			flags|=self.magiccount(mat,'texref')
+			flags|=self.magiccount(mat,'textureSRT')<<2
+			flags|=self.magiccount(mat,'mappingSettings')<<4
+			flags|=self.magiccount(mat,'textureCombiner')<<6
+			flags|=('alpha-compare' in mat.keys())<<8
+			flags|=self.magiccount(mat,'blendMode')<<9
+			flags|=self.magiccount(mat,'blendAlpha')<<11
+			flags|=('indirect-adjustment' in mat.keys())<<13
+			flags|=self.magiccount(mat,'projectionMapping')<<14
+			flags|=('shadow-blending' in mat.keys())
+			matsec+=self.uint32(flags)
+			matdata+=matsec
+		offsettbl=b''
+		for offset in offsets:
+			offsettbl+=self.uint32(offset)
+		final+=offsettbl
+		final+=matdata
+		hdr=self.sechdr(final,'mat1')
+		return hdr+final
 
 	def packpan1(self,data):
 		return b''
@@ -803,7 +935,7 @@ if __name__=='__main__':
 	elif '-x' in args:
 		outname=args[-1].split('/')[-1].replace('.bflyt', '.tflyt')
 		tree=frombflyt(fread(args[-1]))
-		fwrite(dump(tree), outname, 'w')
+		fwrite(dump(tree,[OrderedDict]), outname, 'w')
 	elif '-p' in args:
 		outname=args[-1].split('/')[-1].replace('.tflyt', '.bflyt')
 		tree=load(fread(args[-1],'r'))
