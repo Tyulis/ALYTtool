@@ -122,6 +122,7 @@ ORIG_Y=(
 	'Up',
 	'Down'
 )
+BOMS={'<': b'\xff\xfe', '>':b'\xff\xfe'}
 
 def fread(filename,mode='rb'):
 	if mode=='r':
@@ -240,7 +241,7 @@ class TypeWriter (object):
 	def magiccount(self,data,magic):
 		count=0
 		for key in data.keys():
-			if key.split('-')[0]==magic:
+			if '-'.join(key.split('-')[:-1])==magic:
 				count+=1
 		return count
 
@@ -271,6 +272,7 @@ class frombflyt(ClsFunc, TypeReader):
 		ptr=0
 		self.tree=OrderedDict()
 		self.tree['byte-order']=self.byteorder
+		self.tree['version']=self.version
 		self.tree['BFLYT']=OrderedDict()
 		self.actnode=self.tree['BFLYT']# creates a pointer in the tree, which can change later
 		self.actnode['__pan1idx']=0
@@ -392,8 +394,8 @@ class frombflyt(ClsFunc, TypeReader):
 				flagnode['X-scale']=self.float32(data,ptr); ptr+=4
 				flagnode['Y-scale']=self.float32(data,ptr); ptr+=4
 			for i in range(0,mappingSettings):
-				mat['mappingSettings-%d'%i]=OrderedDict()
-				flagnode=mat['mappingSettings-%d'%i]
+				mat['mapping-settings-%d'%i]=OrderedDict()
+				flagnode=mat['mapping-settings-%d'%i]
 				flagnode['unknown-1']=self.uint8(data,ptr); ptr+=1
 				flagnode['mapping-method']=MAPPING_METHODS[self.uint8(data,ptr)]; ptr+=1
 				flagnode['unknown-2']=self.uint8(data,ptr); ptr+=1
@@ -404,8 +406,8 @@ class frombflyt(ClsFunc, TypeReader):
 				flagnode['unknown-7']=self.uint8(data,ptr); ptr+=1
 			
 			for i in range(0,textureCombiners):
-				mat['textureCombiner-%d'%i]=OrderedDict()
-				flagnode=mat['textureCombiner-%d'%i]
+				mat['texture-combiner-%d'%i]=OrderedDict()
+				flagnode=mat['texture-combiner-%d'%i]
 				flagnode['color-blend']=COLOR_BLENDS[self.uint8(data,ptr)]; ptr+=1
 				flagnode['alpha-blend']=BLENDS[self.uint8(data,ptr)]; ptr+=1
 				flagnode['unknown-1']=self.uint8(data,ptr); ptr+=1
@@ -413,21 +415,21 @@ class frombflyt(ClsFunc, TypeReader):
 			if alphaCompare:
 				mat['alpha-compare']=OrderedDict()
 				flagnode=mat['alpha-compare']
-				flagnode['condition']=ALPHA_COMP_CONDITIONS[self.uint8(data,ptr)]; ptr+=1
+				flagnode['condition']=ALPHA_COMPARE_CONDITIONS[self.uint8(data,ptr)]; ptr+=1
 				flagnode['unknown-1']=self.uint8(data,ptr); ptr+=1
 				flagnode['unknown-2']=self.uint8(data,ptr); ptr+=1
 				flagnode['unknown-3']=self.uint8(data,ptr); ptr+=1
 				flagnode['value']=self.float32(data,ptr); ptr+=4
 			for i in range(0,blendMode):
-				mat['blendMode-%d'%i]=OrderedDict()
-				flagnode=mat['blendMode-%d'%i]
+				mat['blend-mode-%d'%i]=OrderedDict()
+				flagnode=mat['blend-mode-%d'%i]
 				flagnode['blend-operation']=BLEND_CALC_OPS[self.uint8(data,ptr)]; ptr+=1
 				flagnode['source']=BLEND_CALC[self.uint8(data,ptr)]; ptr+=1
 				flagnode['destination']=BLEND_CALC[self.uint8(data,ptr)]; ptr+=1
 				flagnode['logical-operation']=LOGICAL_CALC_OPS[self.uint8(data,ptr)]; ptr+=1
 			for i in range(0,blendAlpha):
-				mat['blendAlpha-%d'%i]=OrderedDict()
-				flagnode=mat['blendAlpha']
+				mat['blend-alpha-%d'%i]=OrderedDict()
+				flagnode=mat['blend-alpha']
 				flagnode['blend-operation']=BLEND_CALC_OPS[self.uint8(data,ptr)]; ptr+=1
 				flagnode['source']=BLEND_CALC[self.uint8(data,ptr)]; ptr+=1
 				flagnode['destination']=BLEND_CALC[self.uint8(data,ptr)]; ptr+=1
@@ -439,8 +441,8 @@ class frombflyt(ClsFunc, TypeReader):
 				flagnode['X-warp']=self.float32(data,ptr); ptr+=4
 				flagnode['Y-warp']=self.float32(data,ptr); ptr+=4
 			for i in range(0,projectionMapping):
-				mat['projectionMapping-%d'%i]=OrderedDict()
-				flagnode=mat['projectionMapping-%d'%i]
+				mat['projection-mapping-%d'%i]=OrderedDict()
+				flagnode=mat['projection-mapping-%d'%i]
 				flagnode['X-translate']=self.float32(data,ptr); ptr+=4
 				flagnode['Y-translate']=self.float32(data,ptr); ptr+=4
 				flagnode['X-scale']=self.float32(data,ptr); ptr+=4
@@ -465,6 +467,7 @@ class frombflyt(ClsFunc, TypeReader):
 		flags=self.uint8(data,ptr); ptr+=1
 		node['visible']=bool(flags&0b00000001)
 		node['transmit-alpha-to-children']=bool((flags&0b00000010)>>1)
+		node['position-adjustment']=bool((flags&0b00000100)>>2)
 		origin=self.uint8(data,ptr); ptr+=1
 		mainorigin=origin%16
 		parentorigin=origin//16
@@ -546,9 +549,12 @@ class frombflyt(ClsFunc, TypeReader):
 			wnd4offsets.append(self.uint32(data,ptr)); ptr+=4
 		wndmat=[]
 		for i in range(0,framenum):
-			wndmat.append(self.materials[self.uint16(data,ptr)]['name']); ptr+=2
+			dic=OrderedDict()
+			dic['material']=self.materials[self.uint16(data,ptr)]['name']; ptr+=2
+			dic['index']=self.uint8(data,ptr); ptr+=1
+			wndmat.append(dic)
+			pad=self.uint8(data,ptr); ptr+=1
 		localnode['wnd4-materials']=wndmat
-		localnode['wnd4-materials-index']=self.uint8(data,ptr); ptr+=1
 	
 	def readtxt1(self,data):
 		ptr=8
@@ -587,7 +593,8 @@ class frombflyt(ClsFunc, TypeReader):
 		shadownode['bottom-color']=self.color(data,ptr,'RGBA8'); ptr+=4
 		shadownode['unknown-2']=self.uint32(data,ptr); ptr+=4
 		text=data[ptr:ptr+localnode['restrict-length']]
-		localnode['text']=text.hex()
+		#localnode['text']=text.hex()
+		localnode['text']=text.decode('utf-16-%s'%self.endianname[0]+'e')
 		ptr+=len(text)
 		ptr+=4-(ptr%4)
 		callname=self.string(data,ptr)
@@ -779,18 +786,34 @@ class frombflyt(ClsFunc, TypeReader):
 
 class tobflyt(ClsFunc, TypeWriter):
 	def main(self, tree):
-		if list(tree.keys())[1]!='BFLYT':
+		if list(tree.keys())[2]!='BFLYT':
 			print('This is not a converted BFLYT file')
 			sys.exit(3)
+		self.version=tree['version']
 		self.byteorder=tree['byte-order']
 		self.sections=tree['BFLYT']
-		self.final=b''
-		self.repackdata()
+		self.final=self.repackdata()
 		return self.final
 	
 	def repackdata(self):
-		return self.repacktree(self.sections)
-	def repacktree(self,tree):
+		self.secnum=0
+		data=self.repacktree(self.sections,True)
+		hdr=self.repackhdr(data)
+		return hdr+data
+	
+	def repackhdr(self,data):
+		final=b'FLYT'
+		final+=BOMS[self.byteorder]
+		final+=self.uint16(0x14)
+		final+=self.uint16(self.version)
+		final+=self.uint16(0x0702)
+		final+=self.uint32(len(data)+0x14)
+		final+=self.uint16(self.secnum)
+		final+=self.uint16(0)
+		return final
+	
+	def repacktree(self,tree,top=False):
+		final=b''
 		for section in tree.keys():
 			magic=section.split('-')[0]
 			try:
@@ -798,7 +821,10 @@ class tobflyt(ClsFunc, TypeWriter):
 			except AttributeError:
 				print('Invalid section: %s'%magic)
 				sys.exit(4)
-			self.final+=method(self.sections[section])
+			if top:
+				self.secnum+=1
+			final+=method(tree[section])
+		return final
 
 	def packlyt1(self,data):
 		final=b''
@@ -818,9 +844,9 @@ class tobflyt(ClsFunc, TypeWriter):
 		final+=self.uint16(0) #data offset. Seems to be always 0
 		filetable=b''
 		offsets=[]
-		filenames=data['file-names']
-		offset_tbl_length=len(filenames)*4
-		for name in filenames:
+		self.textures=data['file-names']
+		offset_tbl_length=len(self.textures)*4
+		for name in self.textures:
 			offsets.append(len(filetable)+offset_tbl_length)
 			filetable+=self.string(name)
 		offsettbl=b''
@@ -839,6 +865,7 @@ class tobflyt(ClsFunc, TypeWriter):
 		filetable=b''
 		offsets=[]
 		filenames=data['file-names']
+		self.fontnames=filenames
 		offset_tbl_length=len(filenames)*4
 		for name in filenames:
 			offsets.append(len(filetable)+offset_tbl_length)
@@ -858,6 +885,7 @@ class tobflyt(ClsFunc, TypeWriter):
 		final+=self.uint16(data['materials-number'])
 		final+=self.uint16(0)
 		self.materials=data['materials']
+		self.matnames=[el['name'] for el in self.materials]
 		offsets=[]
 		offset_tbl_length=len(self.materials)*4
 		matdata=b''
@@ -870,56 +898,250 @@ class tobflyt(ClsFunc, TypeWriter):
 			flags=0
 			flags|=self.magiccount(mat,'texref')
 			flags|=self.magiccount(mat,'textureSRT')<<2
-			flags|=self.magiccount(mat,'mappingSettings')<<4
-			flags|=self.magiccount(mat,'textureCombiner')<<6
+			flags|=self.magiccount(mat,'mapping-settings')<<4
+			flags|=self.magiccount(mat,'texture-combiner')<<6
 			flags|=('alpha-compare' in mat.keys())<<8
-			flags|=self.magiccount(mat,'blendMode')<<9
-			flags|=self.magiccount(mat,'blendAlpha')<<11
+			flags|=self.magiccount(mat,'blend-mode')<<9
+			flags|=self.magiccount(mat,'blend-alpha')<<11
 			flags|=('indirect-adjustment' in mat.keys())<<13
-			flags|=self.magiccount(mat,'projectionMapping')<<14
+			flags|=self.magiccount(mat,'projection-mapping')<<14
 			flags|=('shadow-blending' in mat.keys())
+			if mat['false-0x800']:
+				flags|=0x800
 			matsec+=self.uint32(flags)
+			items=list(mat.keys())[3:]
+			for item in items:
+				itemtype='-'.join(item.split('-')[:-1])
+				dic=mat[item]
+				if itemtype=='texref':
+					matsec+=self.uint16(self.textures.index(dic['file']))
+					matsec+=self.uint8(WRAPS.index(dic['wrap-S']))
+					matsec+=self.uint8(WRAPS.index(dic['wrap-T']))
+				elif itemtype=='textureSRT':
+					matsec+=self.float32(dic['X-translate'])
+					matsec+=self.float32(dic['Y-translate'])
+					matsec+=self.float32(dic['rotate'])
+					matsec+=self.float32(dic['X-scale'])
+					matsec+=self.float32(dic['Y-scale'])
+				elif itemtype=='mapping-settings':
+					matsec+=self.uint8(dic['unknown-1'])
+					matsec+=self.uint8(MAPPING_METHODS.index(dic['mapping-method']))
+					matsec+=self.uint8(dic['unknown-2'])
+					matsec+=self.uint8(dic['unknown-3'])
+					matsec+=self.uint8(dic['unknown-4'])
+					matsec+=self.uint8(dic['unknown-5'])
+					matsec+=self.uint8(dic['unknown-6'])
+					matsec+=self.uint8(dic['unknown-7'])
+				elif itemtype=='texture-combiner':
+					matsec+=self.uint8(COLOR_BLENDS.index(dic['color-blend']))
+					matsec+=self.uint8(BLENDS.index(dic['alpha-blend']))
+					matsec+=self.uint8(dic['unknown-1'])
+					matsec+=self.uint8(dic['unknown-2'])
+				elif itemtype=='alpha-compare':
+					matsec+=self.uint8(ALPHA_COMPARE_CONDITION.index(dic['condition']))
+					matsec+=self.uint8(dic['unknown-1'])
+					matsec+=self.uint8(dic['unknown-2'])
+					matsec+=self.uint8(dic['unknown-3'])
+					matsec+=self.uint32(dic['value'])
+				elif itemtype=='blend-mode':
+					matsec+=self.uint8(BLEND_CALC_OPS.index(dic['blend-operation']))
+					matsec+=self.uint8(BLEND_CALC.index(dic['source']))
+					matsec+=self.uint8(BLEND_CALC.index(dic['destination']))
+					matsec+=self.uint8(LOGICAL_CALC_OPS.index(dic['logical-operation']))
+				elif itemtype=='blend-alpha':
+					matsec+=self.uint8(BLEND_CALC_OPS.index(dic['blend-operation']))
+					matsec+=self.uint8(BLEND_CALC.index(dic['source']))
+					matsec+=self.uint8(BLEND_CALC.index(dic['destination']))
+					matsec+=self.uint8(dic['unknown'])
+				elif itemtype=='indirect-adjustment':
+					matsec+=self.float32(dic['rotate'])
+					matsec+=self.float32(dic['X-warp'])
+					matsec+=self.float32(dic['Y-warp'])
+				elif itemtype=='projection-mapping':
+					matsec+=self.float32(dic['X-translate'])
+					matsec+=self.float32(dic['Y-translate'])
+					matsec+=self.float32(dic['X-scale'])
+					matsec+=self.float32(dic['Y-scale'])
+					matsec+=self.uint8(PROJECTION_MAPPING_TYPES.index(dic['option']))
+					matsec+=self.uint8(dic['unknown-1'])
+					matsec+=self.uint16(dic['unknown-2'])
+				elif itemtype=='shadow-blending':
+					matsec+=self.color(dic['black-blending'],'RGB8')
+					matsec+=self.color(dic['white-blending'],'RGBA8')
+					matsec+=self.pad(1)
 			matdata+=matsec
 		offsettbl=b''
 		for offset in offsets:
 			offsettbl+=self.uint32(offset)
 		final+=offsettbl
 		final+=matdata
+		if 'extra' in data.keys():
+			final+=bytes.fromhex(data['extra'])
 		hdr=self.sechdr(final,'mat1')
 		return hdr+final
+	
+	def packpane(self,data):
+		panesec=b''
+		flags=0
+		flags|=data['visible']
+		flags|=data['transmit-alpha-to-children']<<1
+		flags|=data['position-adjustment']<<2
+		panesec+=self.uint8(flags)
+		origin_x=ORIG_X.index(data['origin']['x'])
+		origin_y=ORIG_Y.index(data['origin']['y'])
+		parent_origin_x=ORIG_X.index(data['parent-origin']['x'])
+		parent_origin_y=ORIG_Y.index(data['parent-origin']['y'])
+		main_origin=(origin_y*4)+origin_x
+		parent_origin=(parent_origin_y*4)+parent_origin_x
+		origin=(parent_origin*16)+main_origin
+		panesec+=self.uint8(origin)
+		panesec+=self.uint8(data['alpha'])
+		panesec+=self.uint8(data['part-scale'])
+		panesec+=self.string(data['name'],32)
+		panesec+=self.float32(data['X-translation'])
+		panesec+=self.float32(data['Y-translation'])
+		panesec+=self.float32(data['Z-translation'])
+		panesec+=self.float32(data['X-rotation'])
+		panesec+=self.float32(data['Y-rotation'])
+		panesec+=self.float32(data['Z-rotation'])
+		panesec+=self.float32(data['X-scale'])
+		panesec+=self.float32(data['Y-scale'])
+		panesec+=self.float32(data['width'])
+		panesec+=self.float32(data['height'])
+		return panesec
 
 	def packpan1(self,data):
-		return b''
+		final=self.packpane(data)
+		hdr=self.sechdr(final,'pan1')
+		return final+hdr
 
 	def packpas1(self,data):
-		return b''
+		tree=self.repacktree(data,True)
+		pas1=self.sechdr(b'','pas1')
+		return pas1+tree
 
 	def packpae1(self,data):
-		return b''
+		return self.sechdr(b'','pae1')
 
 	def packwnd1(self,data):
-		return b''
+		final=self.packpane(data)
+		final+=self.uint16(data['stretch-left'])
+		final+=self.uint16(data['stretch-right'])
+		final+=self.uint16(data['stretch-up'])
+		final+=self.uint16(data['stretch-down'])
+		final+=self.uint16(data['custom-left'])
+		final+=self.uint16(data['custom-right'])
+		final+=self.uint16(data['custom-up'])
+		final+=self.uint16(data['custom-down'])
+		final+=self.uint8(data['frame-count'])
+		final+=self.uint8(data['flags'])
+		final+=self.pad(2)
+		final+=self.uint32(0x70) #the offset1. Always 0x70
+		final+=self.uint32(132+(32*data['coordinates-count'])) #the offset2
+		final+=self.color(data['color-1'],'RGBA8')
+		final+=self.color(data['color-2'],'RGBA8')
+		final+=self.color(data['color-3'],'RGBA8')
+		final+=self.color(data['color-4'],'RGBA8')
+		final+=self.uint16(self.matnames.index(data['material']))
+		final+=self.uint8(data['coordinates-count'])
+		final+=self.pad(1)
+		for i in range(0,data['coordinates-count']):
+			dic=data['coords-%d'%i]
+			for texcoord in dic.values():
+				final+=self.float32(texcoord)
+		part1len=len(final)
+		for i in range(0, len(data['wnd4-materials'])):
+			offset=part1len+4*(len(data['wnd4-materials']))+(4*i)+8
+			final+=self.uint32(offset)
+		for mat in data['wnd4-materials']:
+			final+=self.uint16(self.matnames.index(mat['material']))
+			final+=self.uint8(mat['index'])
+			final+=self.pad(1)
+		hdr=self.sechdr(final,'wnd1')
+		return hdr+final
 
 	def packtxt1(self,data):
-		return b''
+		final=self.packpane(data)
+		final+=self.uint16(data['restrict-length'])
+		final+=self.uint16(data['length'])
+		final+=self.uint16(self.matnames.index(data['material']))
+		final+=self.uint16(self.fontnames.index(data['font']))
+		align=(ORIG_Y.index(data['alignment']['y'])*4)+ORIG_X.index(data['alignment']['x'])
+		final+=self.uint8(align)
+		final+=self.uint8(TEXT_ALIGNS.index(data['line-alignment']))
+		final+=self.uint8(data['active-shadows'])
+		final+=self.uint8(data['unknown-1'])
+		final+=self.float32(data['italic-tilt'])
+		final+=self.uint32(164) #the start offset. Always 164
+		final+=self.color(data['top-color'],'RGBA8')
+		final+=self.color(data['bottom-color'],'RGBA8')
+		final+=self.float32(data['font-size-x'])
+		final+=self.float32(data['font-size-y'])
+		final+=self.float32(data['char-space'])
+		final+=self.float32(data['line-space'])
+		final+=self.uint32(0)
+		shadow=data['shadow']
+		final+=self.float32(shadow['offset-X'])
+		final+=self.float32(shadow['offset-Y'])
+		final+=self.float32(shadow['scale-X'])
+		final+=self.float32(shadow['scale-Y'])
+		final+=self.color(shadow['top-color'],'RGBA8')
+		final+=self.color(shadow['bottom-color'],'RGBA8')
+		final+=self.uint32(shadow['unknown-2'])
+		text=data['text'].encode('utf-16-%se'%('l' if self.byteorder=='<' else 'b'))
+		final+=text
+		final+=self.pad(4-(len(text)%4))
+		final+=self.string4(data['call-name'])
+		hdr=self.sechdr(final,'txt1')
+		return hdr+final
+
+	def packusd1(self,data):
+		final=b''
+		
+		hdr=self.sechdr(final,'usd1')
+		return hdr+final
 
 	def packpic1(self,data):
-		return b''
+		final=self.packpane(data)
+		
+		hdr=self.sechdr(final,'pic1')
+		return hdr+final
 
 	def packbnd1(self,data):
-		return b''
+		final=self.packpane(data)
+		
+		hdr=self.sechdr(final,'bnd1')
+		return hdr+final
+
+	def packprt1(self,data):
+		final=self.packpane(data)
+		
+		hdr=self.sechdr(final,'prt1')
+		return hdr+final
 
 	def packgrp1(self,data):
-		return b''
+		final=b''
+		
+		hdr=self.sechdr(final,'grp1')
+		return hdr+final
 
 	def packgrs1(self,data):
-		return b''
+		final=b''
+		
+		hdr=self.sechdr(final,'grs1')
+		return hdr+final
 
 	def packgre1(self,data):
-		return b''
+		final=b''
+		
+		hdr=self.sechdr(final,'gre1')
+		return hdr+final
 
 	def packcnt1(self,data):
-		return b''
+		final=b''
+		
+		hdr=self.sechdr(final,'cnt1')
+		return hdr+final
 
 if __name__=='__main__':
 	args=sys.argv[1:]
