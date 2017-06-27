@@ -629,6 +629,7 @@ class frombflyt(ClsFunc, TypeReader):
 					entrydata.append(self.float32(data,dataoffset+(j*4)))
 			entry['name']=self.string(data,nameoffset)
 			entry['data']=entrydata
+			entry['unknown']=unknown
 			entries.append(entry)
 		localnode['entries']=entries
 	
@@ -1097,19 +1098,79 @@ class tobflyt(ClsFunc, TypeWriter):
 
 	def packusd1(self,data):
 		final=b''
-		
+		entrynum=data['entry-number']
+		final+=self.uint16(data['entry-number'])
+		final+=self.uint16(data['unknown'])
+		nametbl=b''
+		datatbl=b''
+		entries=b''
+		nameoffsets=[]
+		dataoffsets=[]
+		for entry in data['entries']:
+			nameoffsets.append(len(nametbl))
+			nametbl+=self.string(entry['name'])
+			dataoffsets.append(len(datatbl))
+			typename=entry['data'][0].__class__.__qualname__
+			if typename=='float':
+				datatype=2
+			elif typename=='int':
+				datatype=1
+			elif typename in ('str','unicode','bytes'): #...
+				datatype=0
+			for el in entry['data']:
+				if datatype==0:
+					datatbl+=self.string(el)
+				elif datatype==1:
+					datatbl+=self.int32(el)
+				elif datatype==2:
+					datatbl+=self.float32(el)
+		datatbl+=self.pad(4-(len(datatbl)%4))
+		nametbl+=self.pad(4-(len(nametbl)%4))
+		i=0
+		entryoffset=len(final)
+		for entry in data['entries']: #1 entry in the table = 12B
+			entryrest=entrynum-(i+1)
+			final+=self.uint32((12*entryrest)+len(datatbl)+nameoffsets[i])
+			final+=self.uint32((12*entryrest)+dataoffsets[i])
+			final+=self.uint16(len(entry['data']))
+			typename=entry['data'][0].__class__.__qualname__
+			if typename=='float':
+				datatype=2
+			elif typename=='int':
+				datatype=1
+			elif typename in ('str','unicode','bytes'): #...
+				datatype=0
+			final+=self.uint8(datatype)
+			final+=self.uint8(entry['unknown'])
+		final+=datatbl
+		final+=nametbl
 		hdr=self.sechdr(final,'usd1')
 		return hdr+final
 
 	def packpic1(self,data):
 		final=self.packpane(data)
-		
+		final+=self.color(data['top-left-vtx-color'],'RGBA8')
+		final+=self.color(data['top-right-vtx-color'],'RGBA8')
+		final+=self.color(data['bottom-left-vtx-color'],'RGBA8')
+		final+=self.color(data['bottom-right-vtx-color'],'RGBA8')
+		final+=self.uint16(self.matnames.index(data['material']))
+		texcoordnum=data['tex-coords-number']
+		final+=self.uint8(texcoordnum)
+		final+=self.pad(1)
+		for texcoord in data['tex-coords']:
+			final+=self.float32(texcoord['top-left']['s'])
+			final+=self.float32(texcoord['top-left']['t'])
+			final+=self.float32(texcoord['top-right']['s'])
+			final+=self.float32(texcoord['top-right']['t'])
+			final+=self.float32(texcoord['bottom-left']['s'])
+			final+=self.float32(texcoord['bottom-left']['t'])
+			final+=self.float32(texcoord['bottom-right']['s'])
+			final+=self.float32(texcoord['bottom-right']['t'])
 		hdr=self.sechdr(final,'pic1')
 		return hdr+final
 
 	def packbnd1(self,data):
 		final=self.packpane(data)
-		
 		hdr=self.sechdr(final,'bnd1')
 		return hdr+final
 
