@@ -64,6 +64,23 @@ PIXEL_FORMATS = {
     FORMAT_ETC1_2: 'ETC1'
 }
 
+FORMATS_NAMES = {
+    'L8': FORMAT_L8,
+    'A8': FORMAT_A8,
+    'LA4': FORMAT_LA4,
+    'LA8': FORMAT_LA8,
+    'HILO8': FORMAT_HILO8,
+    'RGB565': FORMAT_RGB565,
+    'RGB8': FORMAT_RGB8,
+    'RGBA5551': FORMAT_RGBA5551,
+    'RGBA4': FORMAT_RGBA4,
+    'RGBA8': FORMAT_RGBA8,
+    'ETC1': FORMAT_RGB8,  #no repacking for these
+    'ETC1A4': FORMAT_RGBA8,
+    'L4': FORMAT_L4,
+    'A4': FORMAT_A4
+}
+
 PIXEL_FORMAT_SIZE = {
     FORMAT_L8: 8,
     FORMAT_A8: 8,
@@ -130,11 +147,12 @@ class Bflim:
     file_size = 0
     imag = {}
 
-    def __init__(self, verbose=False, debug=False, big_endian=False, swizzle=SWIZZLE_NONE):
+    def __init__(self, verbose=False, debug=False, big_endian=False, swizzle=SWIZZLE_NONE, format='RGBA8'):
         self.verbose = verbose
         self.debug = debug
         self.big_endian = big_endian
         self.swizzle = swizzle
+        self._format = FORMATS_NAMES[format]
 
         self.has_cv = 'cv2' in globals()
 
@@ -278,7 +296,7 @@ class Bflim:
         self.imag = {
             'width': width,
             'height': height,
-            'format': FORMAT_RGBA8
+            'format': self._format
         }
 
         self.order = '>' if self.big_endian else '<'
@@ -602,7 +620,7 @@ class Bflim:
 
                                             # adjust for half-byte formats
                                             if PIXEL_FORMAT_SIZE[format_] == 4:
-                                                data_pos /= 2
+                                                data_pos //= 2
                                             start = data_pos * byte_len
                                             end = start + byte_len
 
@@ -612,7 +630,7 @@ class Bflim:
 
                                             # OR single-byte formats in case they're half-byte formats
                                             if byte_len == 1:
-                                                output[start] |= pixel
+                                                output[start] |= pixel[0]
                                             else:
                                                 output[start:end] = pixel
 
@@ -731,9 +749,9 @@ class Bflim:
 
         # rrrrrggg ggbbbbba
         elif format_ == FORMAT_RGBA5551:
-            r5 = (red / 8) & 0x1F
-            g5 = (green / 8) & 0x1F
-            b5 = (blue / 8) & 0x1F
+            r5 = (red // 8) & 0x1F
+            g5 = (green // 8) & 0x1F
+            b5 = (blue // 8) & 0x1F
             a = 1 if alpha > 0 else 0
 
             b1 = (r5 << 3) | (g5 >> 2)
@@ -742,9 +760,9 @@ class Bflim:
 
         # rrrrrggg gggbbbbb
         elif format_ == FORMAT_RGB565:
-            r5 = (red / 8) & 0x1F
-            g6 = (green / 4) & 0x3F
-            b5 = (blue / 8) & 0x1F
+            r5 = (red // 8) & 0x1F
+            g6 = (green // 4) & 0x3F
+            b5 = (blue // 8) & 0x1F
 
             b1 = (r5 << 3) | (g6 >> 3)
             b2 = ((g6 << 5) | b5) & 0xFF
@@ -752,10 +770,10 @@ class Bflim:
 
         # rrrrgggg bbbbaaaa
         elif format_ == FORMAT_RGBA4:
-            r4 = (red / 0x11) & 0x0F
-            g4 = (green / 0x11) & 0x0F
-            b4 = (blue / 0x11) & 0x0F
-            a4 = (alpha / 0x11) & 0x0F
+            r4 = (red // 0x11) & 0x0F
+            g4 = (green // 0x11) & 0x0F
+            b4 = (blue // 0x11) & 0x0F
+            a4 = (alpha // 0x11) & 0x0F
 
             b1 = (r4 << 4) | g4
             b2 = (b4 << 4) | a4
@@ -783,27 +801,27 @@ class Bflim:
 
         # llllaaaa
         elif format_ == FORMAT_LA4:
-            l = int((red * 0.2126) + (green * 0.7152) + (blue * 0.0722)) / 0x11
-            a = (alpha / 0x11) & 0x0F
+            l = int((red * 0.2126) + (green * 0.7152) + (blue * 0.0722)) // 0x11
+            a = (alpha // 0x11) & 0x0F
 
             b = (l << 4) | a
             return [b]
 
         # llll
         elif format_ == FORMAT_L4:
-            l = int((red * 0.2126) + (green * 0.7152) + (blue * 0.0722))
+            l = int((red * 0.2126) + (green * 0.7152) + (blue * 0.0722)) // 0x10
             shift = (index & 1) * 4
             return [l << shift]
 
         # aaaa
         elif format_ == FORMAT_A4:
-            alpha = (alpha / 0x11) & 0xF
+            alpha = (alpha // 0x11) & 0xF
             shift = (index & 1) * 4
             return [alpha << shift]
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='BFLIM Converter')
+    parser = argparse.ArgumentParser(description='BFLIM - PNG Converter, by ObsidianX')
     parser.add_argument('-v', '--verbose', help='print more data when working', action='store_true', default=False)
     parser.add_argument('-d', '--debug', help='print debug information', action='store_true', default=False)
     parser.add_argument('-y', '--yes', help='answer yes to any questions (overwriting files)', action='store_true',
