@@ -1,13 +1,12 @@
 # -*- coding:utf-8 -*-
 import sys
-from txtree import dump,load
+from txtree import dump, load
 import collections
+import argparse
 import struct
 
-FILE='_garc-099-11/blyt/TitleMoon_Main_Up_000_de.bflyt'
-
-FLYT_HEADER='%s4sHHHHIHH'
-WRAPS=(
+FLYT_HEADER = '%s4sHHHHIHH'
+WRAPS = (
 	'Near-Clamp',
 	'Near-Repeat',
 	'Near-Mirror',
@@ -17,19 +16,19 @@ WRAPS=(
 	'Mirror',
 	'GX2-Mirror-Once-Border'
 )
-MAPPING_METHODS=(
+MAPPING_METHODS = (
 	'UV-Mapping',
 	'',
 	'',
 	'Orthogonal-Projection',
 	'PaneBasedProjection'
 )
-BLENDS=(
+BLENDS = (
 	'Max',
 	'Min'
 )
 
-COLOR_BLENDS=(
+COLOR_BLENDS = (
 	'Overwrite',
 	'Multiply',
 	'Add',
@@ -44,7 +43,7 @@ COLOR_BLENDS=(
 	'Each-Indirect'
 )
 
-ALPHA_COMPARE_CONDITION=(
+ALPHA_COMPARE_CONDITIONS = (
 	'Never',
 	'Less',
 	'Less-or-Equal',
@@ -54,7 +53,7 @@ ALPHA_COMPARE_CONDITION=(
 	'Greater',
 	'Always'
 )
-BLEND_CALC=(
+BLEND_CALC = (
 	'0',
 	'1',
 	'FBColor',
@@ -67,7 +66,7 @@ BLEND_CALC=(
 	'1-PixelColor'
 )
 
-BLEND_CALC_OPS=(
+BLEND_CALC_OPS = (
 	'0',
 	'Add',
 	'Subtract',
@@ -76,7 +75,7 @@ BLEND_CALC_OPS=(
 	'Max'
 )
 
-LOGICAL_CALC_OPS=(
+LOGICAL_CALC_OPS = (
 	'None',
 	'NoOp',
 	'Clear',
@@ -96,7 +95,7 @@ LOGICAL_CALC_OPS=(
 	'InvOr'
 )
 
-PROJECTION_MAPPING_TYPES=(
+PROJECTION_MAPPING_TYPES = (
 	'Standard',
 	'Entire-Layout',
 	'2',
@@ -106,410 +105,435 @@ PROJECTION_MAPPING_TYPES=(
 	'6'
 )
 
-TEXT_ALIGNS=(
+TEXT_ALIGNS = (
 	'NA',
 	'Left',
 	'Center',
 	'Right'
 )
-ORIG_X=(
+ORIG_X = (
 	'Center',
 	'Left',
 	'Right'
 )
-ORIG_Y=(
+ORIG_Y = (
 	'Center',
 	'Up',
 	'Down'
 )
-BOMS={'<': b'\xff\xfe', '>':b'\xff\xfe'}
+BOMS = {'<': b'\xff\xfe', '>': b'\xff\xfe'}
 
-def fread(filename,mode='rb'):
-	if mode=='r':
-		f=open(filename,mode,encoding='utf-8')
+
+def fread(filename, mode='rb'):
+	if mode == 'r':
+		f = open(filename, mode, encoding='utf-8')
 	else:
-		f=open(filename,mode)
-	c=f.read()
+		f = open(filename, mode)
+	c = f.read()
 	f.close()
 	return c
-	
-def fwrite(content,filename,mode='wb'):
-	if mode=='w':
-		f=open(filename,mode,encoding='utf-8')
+
+
+def fwrite(content, filename, mode='wb'):
+	if mode == 'w':
+		f = open(filename, mode, encoding='utf-8')
 	else:
-		f=open(filename,mode)
+		f = open(filename, mode)
 	f.write(content)
 	f.close()
 
+
 class ClsFunc(object):
 	'''A class which emulates a function. Useful to split big functions into small modules which share data'''
-	def __new__(cls,*args,**kwargs):
-		self=object.__new__(cls)
-		return self.main(*args,**kwargs)
+	def __new__(cls, *args, **kwargs):
+		self = object.__new__(cls)
+		return self.main(*args, **kwargs)
+
 
 class OrderedDict (collections.OrderedDict):
-	def __setitem__(self,item,value):
+	def __setitem__(self, item, value):
 		if item in self.keys():
 			if not str(item).startswith('__'):
-				raise KeyError('%s already defined'%item)
-		collections.OrderedDict.__setitem__(self,item,value)
+				raise KeyError('%s already defined' % item)
+		collections.OrderedDict.__setitem__(self, item, value)
+
 
 class TypeReader (object):
-	def bit(self,n,bit,length=1):
-		bit=32-bit
-		mask=((2**length)-1)<<(bit-(length))
-		return (n&mask)>>(bit-length)
-	def uint8(self,data,ptr):
-		return struct.unpack_from('%sB'%self.byteorder,data,ptr)[0]
-	def uint16(self,data,ptr):
-		return struct.unpack_from('%sH'%self.byteorder,data,ptr)[0]
-	def uint32(self,data,ptr):
-		return struct.unpack_from('%sI'%self.byteorder,data,ptr)[0]
-	def int8(self,data,ptr):
-		return struct.unpack_from('%sb'%self.byteorder,data,ptr)[0]
-	def int16(self,data,ptr):
-		return struct.unpack_from('%sh'%self.byteorder,data,ptr)[0]
-	def int32(self,data,ptr):
-		return struct.unpack_from('%si'%self.byteorder,data,ptr)[0]
-	def float32(self,data,ptr):
-		return struct.unpack_from('%sf'%self.byteorder,data,ptr)[0]
-	def string(self,data,ptr):
-		subdata=data[ptr:]
+	def bit(self, n, bit, length=1):
+		bit = 32 - bit
+		mask = ((2 ** length) - 1) << (bit - (length))
+		return (n & mask) >> (bit - length)
+	
+	def uint8(self, data, ptr):
+		return struct.unpack_from('%sB' % self.byteorder, data, ptr)[0]
+	
+	def uint16(self, data, ptr):
+		return struct.unpack_from('%sH' % self.byteorder, data, ptr)[0]
+	
+	def uint32(self, data, ptr):
+		return struct.unpack_from('%sI' % self.byteorder, data, ptr)[0]
+	
+	def int8(self, data, ptr):
+		return struct.unpack_from('%sb' % self.byteorder, data, ptr)[0]
+	
+	def int16(self, data, ptr):
+		return struct.unpack_from('%sh' % self.byteorder, data, ptr)[0]
+	
+	def int32(self, data, ptr):
+		return struct.unpack_from('%si' % self.byteorder, data, ptr)[0]
+	
+	def float32(self, data, ptr):
+		return struct.unpack_from('%sf' % self.byteorder, data, ptr)[0]
+	
+	def string(self, data, ptr):
+		subdata = data[ptr:]
 		try:
-			end=subdata.index(0)
+			end = subdata.index(0)
 		except:
-			end=-1
-		if end==-1:
+			end = -1
+		if end == -1:
 			return subdata.decode('ascii')
 		else:
 			return subdata[:end].decode('ascii')
-	def color(self,data,offset,format):
-		format=format.upper().strip()
-		if format in ('RGBA8','RGB8'):
-			r=data[offset]
-			g=data[offset+1]
-			b=data[offset+2]
-			if format=='RGBA8':
-				a=data[offset+3]
-			final=OrderedDict()
-			final['RED']=r
-			final['GREEN']=g
-			final['BLUE']=b
-			if format=='RGBA8':
-				final['ALPHA']=a
-		return final
 	
+	def color(self, data, offset, format):
+		format = format.upper().strip()
+		if format in ('RGBA8', 'RGB8'):
+			r = data[offset]
+			g = data[offset + 1]
+			b = data[offset + 2]
+			if format == 'RGBA8':
+				a = data[offset + 3]
+			final = OrderedDict()
+			final['RED'] = r
+			final['GREEN'] = g
+			final['BLUE'] = b
+			if format == 'RGBA8':
+				final['ALPHA'] = a
+		return final
+
+
 class TypeWriter (object):
-	def uint8(self,data):
-		return struct.pack('%sB'%self.byteorder,data)
-	def uint16(self,data):
-		return struct.pack('%sH'%self.byteorder,data)
-	def uint32(self,data):
-		return struct.pack('%sI'%self.byteorder,data)
-	def int8(self,data):
-		return struct.pack('%sb'%self.byteorder,data)
-	def int16(self,data):
-		return struct.pack('%sh'%self.byteorder,data)
-	def int32(self,data):
-		return struct.pack('%si'%self.byteorder,data)
-	def float32(self,data):
-		return struct.pack('%sf'%self.byteorder,data)
-	def string(self,data,align=0):
-		s=data.encode('ascii')+b'\x00'
-		pad=self.pad(align-len(s))
-		return s+pad
-	def string4(self,data):
-		s=data.encode('ascii')+b'\x00'
-		pad=self.pad(4-(len(s)%4))
-		return s+pad
-	def pad(self,num):
-		return b'\x00'*num
-	def sechdr(self,data,magic):
-		magic=magic.encode('ascii')
-		length=len(data)+8
-		return magic+self.uint32(length)
-	def color(self,data,format):
-		format=format.upper()
-		out=b''
-		if format in ('RGB8','RGBA8'):
-			out+=self.uint8(data['RED'])
-			out+=self.uint8(data['BLUE'])
-			out+=self.uint8(data['GREEN'])
-			if format=='RGBA8':
-				out+=self.uint8(data['ALPHA'])
+	def uint8(self, data):
+		return struct.pack('%sB' % self.byteorder, data)
+	
+	def uint16(self, data):
+		return struct.pack('%sH' % self.byteorder, data)
+	
+	def uint32(self, data):
+		return struct.pack('%sI' % self.byteorder, data)
+	
+	def int8(self, data):
+		return struct.pack('%sb' % self.byteorder, data)
+	
+	def int16(self, data):
+		return struct.pack('%sh' % self.byteorder, data)
+	
+	def int32(self, data):
+		return struct.pack('%si' % self.byteorder, data)
+	
+	def float32(self, data):
+		return struct.pack('%sf' % self.byteorder, data)
+	
+	def string(self, data, align=0):
+		s = data.encode('ascii')
+		if align < len(s) + 1:
+			align = len(s) + 1
+		return struct.pack('%s%ds' % (self.byteorder, align), s)
+	
+	def string4(self, data):
+		s = data.encode('ascii') + b'\x00'
+		pad = self.pad(4 - (len(s) % 4))
+		return s + pad
+	
+	def pad(self, num):
+		return b'\x00' * num
+	
+	def sechdr(self, data, magic):
+		magic = magic.encode('ascii')
+		length = len(data) + 8
+		return magic + self.uint32(length)
+	
+	def color(self, data, format):
+		format = format.upper()
+		out = b''
+		if format in ('RGB8', 'RGBA8'):
+			out += self.uint8(data['RED'])
+			out += self.uint8(data['BLUE'])
+			out += self.uint8(data['GREEN'])
+			if format == 'RGBA8':
+				out += self.uint8(data['ALPHA'])
 		return out
-	def magiccount(self,data,magic):
-		count=0
+	
+	def magiccount(self, data, magic):
+		count = 0
 		for key in data.keys():
-			if '-'.join(key.split('-')[:-1])==magic:
-				count+=1
+			if '-'.join(key.split('-')[:-1]) == magic:
+				count += 1
 		return count
 
+
 class frombflyt(ClsFunc, TypeReader):
-	def main(self,data):
-		self.bflyt=data
+	def main(self, data):
+		self.bflyt = data
 		self.readheader()
 		return self.parsedata()
+	
 	def readheader(self):
-		header=self.bflyt[:0x14]
-		self.data=self.bflyt[0x14:]
-		if header[0:4]!=b'FLYT':
+		header = self.bflyt[:0x14]
+		self.data = self.bflyt[0x14:]
+		if header[0:4] != b'FLYT':
 			print('Not a valid BFLYT file.')
 			sys.exit(1)
-		self.byteorder='<' if header[4:6]==b'\xff\xfe' else '>'
-		self.endianname='little' if self.byteorder=='<' else 'big'
-		hdata=struct.unpack(FLYT_HEADER%self.byteorder,header)
-		#some unused data
+		self.byteorder = '<' if header[4:6] == b'\xff\xfe' else '>'
+		self.endianname = 'little' if self.byteorder == '<' else 'big'
+		hdata = struct.unpack(FLYT_HEADER % self.byteorder, header)
+		#some unused or already read data
 		#magic, endianness,
-		#headerlength=hdata[2]
-		self.version=hdata[3]
-		#padding=hdata[4]
-		#filesize=hdata[5]
-		self.secnum=hdata[6]
-		#padding=hdata[7]
+		#headerlength = hdata[2]
+		self.version = hdata[3]
+		#padding = hdata[4]
+		#filesize = hdata[5]
+		self.secnum = hdata[6]
+		#padding = hdata[7]
 	
 	def parsedata(self):
-		ptr=0
-		self.tree=OrderedDict()
-		self.tree['byte-order']=self.byteorder
-		self.tree['version']=self.version
-		self.tree['BFLYT']=OrderedDict()
-		self.actnode=self.tree['BFLYT']# creates a pointer in the tree, which can change later
-		self.actnode['__pan1idx']=0
-		self.actnode['__pas1idx']=0
-		for i in range(0,self.secnum):
-			magic=self.data[ptr:ptr+4].decode('ascii')
-			size=int.from_bytes(self.data[ptr+4:ptr+8],self.endianname)
-			chunk=self.data[ptr:ptr+size]
+		ptr = 0
+		self.tree = OrderedDict()
+		self.tree['byte-order'] = self.byteorder
+		self.tree['version'] = self.version
+		self.tree['BFLYT'] = OrderedDict()
+		self.actnode = self.tree['BFLYT']  # creates a pointer in the tree, which can change later
+		self.actnode['__pan1idx'] = 0
+		self.actnode['__pas1idx'] = 0
+		for i in range(0, self.secnum):
+			magic = self.data[ptr:ptr + 4].decode('ascii')
+			size = int.from_bytes(self.data[ptr + 4:ptr + 8], self.endianname)
+			chunk = self.data[ptr:ptr + size]
 			try:
-				method=eval('self.read'+magic)# quicker to code than if magic=='lyt1':...
+				method = eval('self.read' + magic)  # quicker to code than if magic=='lyt1':...
 			except AttributeError:
-				print('Invalid section magic: %s'%magic)
+				print('Invalid section magic: %s' % magic)
 			method(chunk)
-			ptr+=size
+			ptr += size
 		return self.tree
 	
-	def readlyt1(self,data):
-		self.actnode['lyt1']=OrderedDict()
-		localnode=self.actnode['lyt1']
-		ptr=8
-		localnode['drawn-from-middle']=bool(self.uint8(data,ptr)); ptr+=4
-		localnode['screen-width']=self.float32(data,ptr); ptr+=4
-		localnode['screen-height']=self.float32(data,ptr); ptr+=4
-		localnode['max-parts-width']=self.float32(data,ptr); ptr+=4
-		localnode['max-parts-height']=self.float32(data,ptr); ptr+=4
-		localnode['name']=self.string(data,ptr)
+	def readlyt1(self, data):
+		self.actnode['lyt1'] = OrderedDict()
+		localnode = self.actnode['lyt1']
+		ptr = 8
+		localnode['drawn-from-middle'] = bool(self.uint8(data, ptr)); ptr += 4
+		localnode['screen-width'] = self.float32(data, ptr); ptr += 4
+		localnode['screen-height'] = self.float32(data, ptr); ptr += 4
+		localnode['max-parts-width'] = self.float32(data, ptr); ptr += 4
+		localnode['max-parts-height'] = self.float32(data, ptr); ptr += 4
+		localnode['name'] = self.string(data, ptr)
 	
-	def readtxl1(self,data):
-		self.actnode['txl1']=OrderedDict()
-		localnode=self.actnode['txl1']
-		ptr=8
-		texnum=self.uint16(data,ptr); ptr+=2
-		localnode['texture-number']=texnum
-		#localnode['data-start-offset']=self.uint16(data,ptr)
-		ptr+=2
-		offsets=[]
-		startentries=ptr
-		for i in range(0,texnum):
-			offsets.append(self.uint32(data,ptr)); ptr+=4
-		#localnode['filenames-offsets']=offsets
-		filenames=[]
+	def readtxl1(self, data):
+		self.actnode['txl1'] = OrderedDict()
+		localnode = self.actnode['txl1']
+		ptr = 8
+		texnum = self.uint16(data, ptr); ptr += 2
+		localnode['texture-number'] = texnum
+		#localnode['data-start-offset'] = self.uint16(data,ptr)
+		ptr += 2
+		offsets = []
+		startentries = ptr
+		for i in range(0, texnum):
+			offsets.append(self.uint32(data, ptr)); ptr += 4
+		filenames = []
 		for offset in offsets:
-			absoffset=startentries+offset
-			filenames.append(self.string(data,absoffset))
-		localnode['file-names']=filenames
-		self.texturenames=filenames
+			absoffset = startentries + offset
+			filenames.append(self.string(data, absoffset))
+		localnode['file-names'] = filenames
+		self.texturenames = filenames
 	
-	def readfnl1(self,data):
-		self.actnode['fnl1']=OrderedDict()
-		localnode=self.actnode['fnl1']
-		localnode['comment']='List of the used fonts files names'
-		ptr=8
-		fontnum=self.uint16(data,ptr); ptr+=2
-		localnode['fonts-number']=fontnum
-		#localnode['data-start-offset']=self.uint16(data,ptr);
-		ptr+=2
-		offsets=[]
-		startentries=ptr
-		for i in range(0,fontnum):
-			offsets.append(self.uint32(data,ptr)); ptr+=4
-		#localnode['file-names-offsets']=offsets
-		filenames=[]
+	def readfnl1(self, data):
+		self.actnode['fnl1'] = OrderedDict()
+		localnode = self.actnode['fnl1']
+		ptr = 8
+		fontnum = self.uint16(data, ptr); ptr += 2
+		localnode['fonts-number'] = fontnum
+		#localnode['data-start-offset'] = self.uint16(data, ptr)
+		ptr += 2
+		offsets = []
+		startentries = ptr
+		for i in range(0, fontnum):
+			offsets.append(self.uint32(data, ptr)); ptr += 4
+		filenames = []
 		for offset in offsets:
-			absoffset=startentries+offset
-			filenames.append(self.string(data,absoffset))
-		localnode['file-names']=filenames
-		self.fontnames=filenames
+			absoffset = startentries + offset
+			filenames.append(self.string(data, absoffset))
+		localnode['file-names'] = filenames
+		self.fontnames = filenames
 	
-	def readmat1(self,data):
-		self.actnode['mat1']=OrderedDict()
-		localnode=self.actnode['mat1']
-		ptr=8
-		matnum=self.uint16(data,ptr); ptr+=2
-		localnode['materials-number']=matnum
-		#localnode['data-start-offset']=self.uint16(data,ptr)
-		ptr+=2
-		offsets=[]
-		startentries=ptr
-		for i in range(0,matnum):
-			offsets.append(self.uint32(data,ptr)); ptr+=4
-		#localnode['materials-offsets']=offsets
-		self.materials=[]
+	def readmat1(self, data):
+		self.actnode['mat1'] = OrderedDict()
+		localnode = self.actnode['mat1']
+		ptr = 8
+		matnum = self.uint16(data, ptr); ptr += 2
+		localnode['materials-number'] = matnum
+		#localnode['data-start-offset'] = self.uint16(data, ptr)
+		ptr += 2
+		offsets = []
+		for i in range(0, matnum):
+			offsets.append(self.uint32(data, ptr)); ptr += 4
+		self.materials = []
 		for offset in offsets:
-			ptr=offset
-			mat=OrderedDict()
-			mat['name']=self.string(data,ptr); ptr+=0x1c
-			mat['fore-color']=self.color(data,ptr,'RGBA8'); ptr+=4
-			mat['back-color']=self.color(data,ptr,'RGBA8'); ptr+=4
+			ptr = offset
+			mat = OrderedDict()
+			mat['name'] = self.string(data, ptr); ptr += 28
+			mat['fore-color'] = self.color(data, ptr, 'RGBA8'); ptr += 4
+			mat['back-color'] = self.color(data, ptr, 'RGBA8'); ptr += 4
 			
-			flags=self.uint32(data,ptr); ptr+=4
-			if flags in (2069,2154): #to avoid many problems
-				flags^=0x0800
-				mat['false-0x800']=True
+			flags = self.uint32(data, ptr); ptr += 4
+			if flags in (2069, 2154):  #to avoid many problems
+				flags ^= 0x0800
+				mat['false-0x800'] = True
 			else:
-				mat['false-0x800']=False
-			texref=self.bit(flags,30,2)
-			textureSRT=self.bit(flags,28,2)
-			mappingSettings=self.bit(flags,26,2)
-			textureCombiners=self.bit(flags,24,2)
-			alphaCompare=self.bit(flags,22,1)
-			blendMode=self.bit(flags,20,2)
-			blendAlpha=self.bit(flags,18,2)
-			indirect=self.bit(17,1)
-			projectionMapping=self.bit(flags,15,2)
-			shadowBlending=self.bit(flags,14,1)
+				mat['false-0x800'] = False
+			texref = self.bit(flags, 30, 2)
+			textureSRT = self.bit(flags, 28, 2)
+			mappingSettings = self.bit(flags, 26, 2)
+			textureCombiners = self.bit(flags, 24, 2)
+			alphaCompare = self.bit(flags, 22, 1)
+			blendMode = self.bit(flags, 20, 2)
+			blendAlpha = self.bit(flags, 18, 2)
+			indirect = self.bit(17, 1)
+			projectionMapping = self.bit(flags, 15, 2)
+			shadowBlending = self.bit(flags, 14, 1)
 			
-			for i in range(0,texref):
-				mat['texref-%d'%i]=OrderedDict()
-				flagnode=mat['texref-%d'%i]
-				flagnode['file']=self.texturenames[self.uint16(data,ptr)]; ptr+=2
-				flagnode['wrap-S']=WRAPS[self.uint8(data,ptr)]; ptr+=1
-				flagnode['wrap-T']=WRAPS[self.uint8(data,ptr)]; ptr+=1
-			for i in range(0,textureSRT):
-				mat['textureSRT-%d'%i]=OrderedDict()
-				flagnode=mat['textureSRT-%d'%i]
-				flagnode['X-translate']=self.float32(data,ptr); ptr+=4
-				flagnode['Y-translate']=self.float32(data,ptr); ptr+=4
-				flagnode['rotate']=self.float32(data,ptr); ptr+=4
-				flagnode['X-scale']=self.float32(data,ptr); ptr+=4
-				flagnode['Y-scale']=self.float32(data,ptr); ptr+=4
-			for i in range(0,mappingSettings):
-				mat['mapping-settings-%d'%i]=OrderedDict()
-				flagnode=mat['mapping-settings-%d'%i]
-				flagnode['unknown-1']=self.uint8(data,ptr); ptr+=1
-				flagnode['mapping-method']=MAPPING_METHODS[self.uint8(data,ptr)]; ptr+=1
-				flagnode['unknown-2']=self.uint8(data,ptr); ptr+=1
-				flagnode['unknown-3']=self.uint8(data,ptr); ptr+=1
-				flagnode['unknown-4']=self.uint8(data,ptr); ptr+=1
-				flagnode['unknown-5']=self.uint8(data,ptr); ptr+=1
-				flagnode['unknown-6']=self.uint8(data,ptr); ptr+=1
-				flagnode['unknown-7']=self.uint8(data,ptr); ptr+=1
+			for i in range(0, texref):
+				mat['texref-%d' % i] = OrderedDict()
+				flagnode = mat['texref-%d' % i]
+				flagnode['file'] = self.texturenames[self.uint16(data,  ptr)]; ptr += 2
+				flagnode['wrap-S'] = WRAPS[self.uint8(data, ptr)]; ptr += 1
+				flagnode['wrap-T'] = WRAPS[self.uint8(data, ptr)]; ptr += 1
+			for i in range(0, textureSRT):
+				mat['textureSRT-%d' % i] = OrderedDict()
+				flagnode = mat['textureSRT-%d' % i]
+				flagnode['X-translate'] = self.float32(data, ptr); ptr += 4
+				flagnode['Y-translate'] = self.float32(data, ptr); ptr += 4
+				flagnode['rotate'] = self.float32(data, ptr); ptr += 4
+				flagnode['X-scale'] = self.float32(data, ptr); ptr += 4
+				flagnode['Y-scale'] = self.float32(data, ptr); ptr += 4
+			for i in range(0, mappingSettings):
+				mat['mapping-settings-%d' % i] = OrderedDict()
+				flagnode = mat['mapping-settings-%d' % i]
+				flagnode['unknown-1'] = self.uint8(data, ptr); ptr += 1
+				flagnode['mapping-method'] = MAPPING_METHODS[self.uint8(data, ptr)]; ptr += 1
+				flagnode['unknown-2'] = self.uint8(data, ptr); ptr += 1
+				flagnode['unknown-3'] = self.uint8(data, ptr); ptr += 1
+				flagnode['unknown-4'] = self.uint8(data, ptr); ptr += 1
+				flagnode['unknown-5'] = self.uint8(data, ptr); ptr += 1
+				flagnode['unknown-6'] = self.uint8(data, ptr); ptr += 1
+				flagnode['unknown-7'] = self.uint8(data, ptr); ptr += 1
 			
-			for i in range(0,textureCombiners):
-				mat['texture-combiner-%d'%i]=OrderedDict()
-				flagnode=mat['texture-combiner-%d'%i]
-				flagnode['color-blend']=COLOR_BLENDS[self.uint8(data,ptr)]; ptr+=1
-				flagnode['alpha-blend']=BLENDS[self.uint8(data,ptr)]; ptr+=1
-				flagnode['unknown-1']=self.uint8(data,ptr); ptr+=1
-				flagnode['unknown-2']=self.uint8(data,ptr); ptr+=1
+			for i in range(0, textureCombiners):
+				mat['texture-combiner-%d' % i] = OrderedDict()
+				flagnode = mat['texture-combiner-%d' % i]
+				flagnode['color-blend'] = COLOR_BLENDS[self.uint8(data, ptr)]; ptr += 1
+				flagnode['alpha-blend'] = BLENDS[self.uint8(data, ptr)]; ptr += 1
+				flagnode['unknown-1'] = self.uint8(data, ptr); ptr += 1
+				flagnode['unknown-2'] = self.uint8(data, ptr); ptr += 1
 			if alphaCompare:
-				mat['alpha-compare']=OrderedDict()
-				flagnode=mat['alpha-compare']
-				flagnode['condition']=ALPHA_COMPARE_CONDITIONS[self.uint8(data,ptr)]; ptr+=1
-				flagnode['unknown-1']=self.uint8(data,ptr); ptr+=1
-				flagnode['unknown-2']=self.uint8(data,ptr); ptr+=1
-				flagnode['unknown-3']=self.uint8(data,ptr); ptr+=1
-				flagnode['value']=self.float32(data,ptr); ptr+=4
-			for i in range(0,blendMode):
-				mat['blend-mode-%d'%i]=OrderedDict()
-				flagnode=mat['blend-mode-%d'%i]
-				flagnode['blend-operation']=BLEND_CALC_OPS[self.uint8(data,ptr)]; ptr+=1
-				flagnode['source']=BLEND_CALC[self.uint8(data,ptr)]; ptr+=1
-				flagnode['destination']=BLEND_CALC[self.uint8(data,ptr)]; ptr+=1
-				flagnode['logical-operation']=LOGICAL_CALC_OPS[self.uint8(data,ptr)]; ptr+=1
-			for i in range(0,blendAlpha):
-				mat['blend-alpha-%d'%i]=OrderedDict()
-				flagnode=mat['blend-alpha']
-				flagnode['blend-operation']=BLEND_CALC_OPS[self.uint8(data,ptr)]; ptr+=1
-				flagnode['source']=BLEND_CALC[self.uint8(data,ptr)]; ptr+=1
-				flagnode['destination']=BLEND_CALC[self.uint8(data,ptr)]; ptr+=1
-				flagnode['unknown']=self.uint8(data,ptr); ptr+=1
+				mat['alpha-compare'] = OrderedDict()
+				flagnode = mat['alpha-compare']
+				flagnode['condition'] = ALPHA_COMPARE_CONDITIONS[self.uint8(data, ptr)]; ptr += 1
+				flagnode['unknown-1'] = self.uint8(data, ptr); ptr += 1
+				flagnode['unknown-2'] = self.uint8(data, ptr); ptr += 1
+				flagnode['unknown-3'] = self.uint8(data, ptr); ptr += 1
+				flagnode['value'] = self.float32(data, ptr); ptr += 4
+			for i in range(0, blendMode):
+				mat['blend-mode-%d' % i] = OrderedDict()
+				flagnode = mat['blend-mode-%d' % i]
+				flagnode['blend-operation'] = BLEND_CALC_OPS[self.uint8(data, ptr)]; ptr += 1
+				flagnode['source'] = BLEND_CALC[self.uint8(data, ptr)]; ptr += 1
+				flagnode['destination'] = BLEND_CALC[self.uint8(data, ptr)]; ptr += 1
+				flagnode['logical-operation'] = LOGICAL_CALC_OPS[self.uint8(data, ptr)]; ptr += 1
+			for i in range(0, blendAlpha):
+				mat['blend-alpha-%d' % i] = OrderedDict()
+				flagnode = mat['blend-alpha-%d' % i]
+				flagnode['blend-operation'] = BLEND_CALC_OPS[self.uint8(data, ptr)]; ptr += 1
+				flagnode['source'] = BLEND_CALC[self.uint8(data, ptr)]; ptr += 1
+				flagnode['destination'] = BLEND_CALC[self.uint8(data, ptr)]; ptr += 1
+				flagnode['unknown'] = self.uint8(data, ptr); ptr += 1
 			if indirect:
-				mat['indirect-adjustment']=OrderedDict()
-				flagnode=mat['indirect-adjustment']
-				flagnode['rotate']=self.float32(data,ptr); ptr+=4
-				flagnode['X-warp']=self.float32(data,ptr); ptr+=4
-				flagnode['Y-warp']=self.float32(data,ptr); ptr+=4
-			for i in range(0,projectionMapping):
-				mat['projection-mapping-%d'%i]=OrderedDict()
-				flagnode=mat['projection-mapping-%d'%i]
-				flagnode['X-translate']=self.float32(data,ptr); ptr+=4
-				flagnode['Y-translate']=self.float32(data,ptr); ptr+=4
-				flagnode['X-scale']=self.float32(data,ptr); ptr+=4
-				flagnode['Y-scale']=self.float32(data,ptr); ptr+=4
-				flagnode['option']=PROJECTION_MAPPING_TYPES[self.uint8(data,ptr)]; ptr+=1
-				flagnode['unknown-1']=self.uint8(data,ptr); ptr+=1
-				flagnode['unknown-2']=self.uint16(data,ptr); ptr+=2
+				mat['indirect-adjustment'] = OrderedDict()
+				flagnode = mat['indirect-adjustment']
+				flagnode['rotate'] = self.float32(data, ptr); ptr += 4
+				flagnode['X-warp'] = self.float32(data, ptr); ptr += 4
+				flagnode['Y-warp'] = self.float32(data, ptr); ptr += 4
+			for i in range(0, projectionMapping):
+				mat['projection-mapping-%d' % i] = OrderedDict()
+				flagnode = mat['projection-mapping-%d' % i]
+				flagnode['X-translate'] = self.float32(data, ptr); ptr += 4
+				flagnode['Y-translate'] = self.float32(data, ptr); ptr += 4
+				flagnode['X-scale'] = self.float32(data, ptr); ptr += 4
+				flagnode['Y-scale'] = self.float32(data, ptr); ptr += 4
+				flagnode['option'] = PROJECTION_MAPPING_TYPES[self.uint8(data, ptr)]; ptr += 1
+				flagnode['unknown-1'] = self.uint8(data, ptr); ptr += 1
+				flagnode['unknown-2'] = self.uint16(data, ptr); ptr += 2
 			if shadowBlending:
-				mat['shadow-blending']=OrderedDict()
-				flagnode=mat['shadow-blending']
-				flagnode['black-blending']=self.color(data,ptr,'RGB8'); ptr+=3
-				flagnode['white-blending']=self.color(data,ptr,'RGBA8'); ptr+=4
-				pad=self.uint8(data,ptr); ptr+=1
+				mat['shadow-blending'] = OrderedDict()
+				flagnode = mat['shadow-blending']
+				flagnode['black-blending'] = self.color(data, ptr, 'RGB8'); ptr += 3
+				flagnode['white-blending'] = self.color(data, ptr, 'RGBA8'); ptr += 4
+				pad = self.uint8(data, ptr); ptr += 1
 			self.materials.append(mat)
-		if ptr<len(data):
-				extra=data[ptr:]
-				localnode['extra']=extra.hex()
-		localnode['materials']=self.materials
+		if ptr < len(data):
+				extra = data[ptr:]
+				localnode['extra'] = extra.hex()
+		localnode['materials'] = self.materials
 	
-	def readpane(self,data,ptr):
-		node=OrderedDict()
-		flags=self.uint8(data,ptr); ptr+=1
-		node['visible']=bool(flags&0b00000001)
-		node['transmit-alpha-to-children']=bool((flags&0b00000010)>>1)
-		node['position-adjustment']=bool((flags&0b00000100)>>2)
-		origin=self.uint8(data,ptr); ptr+=1
-		mainorigin=origin%16
-		parentorigin=origin//16
-		node['origin']=OrderedDict()
-		node['parent-origin']=OrderedDict()
-		orignode=node['origin']
-		orignode['x']=ORIG_X[mainorigin%4]
-		orignode['y']=ORIG_Y[mainorigin//4]
-		orignode=node['parent-origin']
-		orignode['x']=ORIG_X[parentorigin%4]
-		orignode['y']=ORIG_Y[parentorigin//4]
-		node['alpha']=self.uint8(data,ptr); ptr+=1
-		node['part-scale']=self.uint8(data,ptr); ptr+=1
-		node['name']=self.string(data,ptr); ptr+=32
-		self.actnode['__prevname']=node['name']
-		node['X-translation']=self.float32(data,ptr); ptr+=4
-		node['Y-translation']=self.float32(data,ptr); ptr+=4
-		node['Z-translation']=self.float32(data,ptr); ptr+=4
-		node['X-rotation']=self.float32(data,ptr); ptr+=4
-		node['Y-rotation']=self.float32(data,ptr); ptr+=4
-		node['Z-rotation']=self.float32(data,ptr); ptr+=4
-		node['X-scale']=self.float32(data,ptr); ptr+=4
-		node['Y-scale']=self.float32(data,ptr); ptr+=4
-		node['width']=self.float32(data,ptr); ptr+=4
-		node['height']=self.float32(data,ptr); ptr+=4
-		return node,ptr
+	def readpane(self, data, ptr):
+		node = OrderedDict()
+		flags = self.uint8(data, ptr); ptr += 1
+		node['visible'] = bool(flags & 0b00000001)
+		node['transmit-alpha-to-children'] = bool((flags & 0b00000010) >> 1)
+		node['position-adjustment'] = bool((flags & 0b00000100) >> 2)
+		origin = self.uint8(data, ptr); ptr += 1
+		mainorigin = origin % 16
+		parentorigin = origin // 16
+		node['origin'] = OrderedDict()
+		node['parent-origin'] = OrderedDict()
+		orignode = node['origin']
+		orignode['x'] = ORIG_X[mainorigin % 4]
+		orignode['y'] = ORIG_Y[mainorigin // 4]
+		orignode = node['parent-origin']
+		orignode['x'] = ORIG_X[parentorigin % 4]
+		orignode['y'] = ORIG_Y[parentorigin // 4]
+		node['alpha'] = self.uint8(data, ptr); ptr += 1
+		node['part-scale'] = self.uint8(data, ptr); ptr += 1
+		node['name'] = self.string(data, ptr); ptr += 32
+		self.actnode['__prevname'] = node['name']
+		node['X-translation'] = self.float32(data, ptr); ptr += 4
+		node['Y-translation'] = self.float32(data, ptr); ptr += 4
+		node['Z-translation'] = self.float32(data, ptr); ptr += 4
+		node['X-rotation'] = self.float32(data, ptr); ptr += 4
+		node['Y-rotation'] = self.float32(data, ptr); ptr += 4
+		node['Z-rotation'] = self.float32(data, ptr); ptr += 4
+		node['X-scale'] = self.float32(data, ptr); ptr += 4
+		node['Y-scale'] = self.float32(data, ptr); ptr += 4
+		node['width'] = self.float32(data, ptr); ptr += 4
+		node['height'] = self.float32(data, ptr); ptr += 4
+		return node, ptr
 	
-	def readpan1(self,data):
-		ptr=8
-		info,ptr=self.readpane(data,ptr)
-		secname='pan1-%s'%self.actnode['__prevname']
-		self.actnode[secname]=OrderedDict()
+	def readpan1(self, data):
+		ptr = 8
+		info, ptr = self.readpane(data, ptr)
+		secname = 'pan1-%s' % self.actnode['__prevname']
+		self.actnode[secname] = OrderedDict()
 		self.actnode[secname].update(info)
 		
-	def readpas1(self,data):
-		secname='pas1-%s'%self.actnode['__prevname']
-		self.actnode[secname]=OrderedDict()
-		parentnode=self.actnode
-		self.actnode=self.actnode[secname]
-		self.actnode['__parentnode']=parentnode
+	def readpas1(self, data):
+		secname = 'pas1-%s' % self.actnode['__prevname']
+		self.actnode[secname] = OrderedDict()
+		parentnode = self.actnode
+		self.actnode = self.actnode[secname]
+		self.actnode['__parentnode'] = parentnode
 	
-	def readwnd1(self,data):
+	def readwnd1(self, data):
 		ptr=8
 		info,ptr=self.readpane(data,ptr)
 		secname='wnd1-%s'%self.actnode['__prevname']
@@ -677,11 +701,13 @@ class frombflyt(ClsFunc, TypeReader):
 		self.actnode[secname]=OrderedDict()
 		localnode=self.actnode[secname]
 		localnode.update(info)
-		count=self.uint32(data,ptr)-1; ptr+=4
+		count=self.uint32(data,ptr); ptr+=4
 		localnode['section-count']=count
 		localnode['section-scale-X']=self.float32(data,ptr); ptr+=4
 		localnode['section-scale-Y']=self.float32(data,ptr); ptr+=4
 		entries=[]
+		extraoffsets=[]
+		entryoffsets=[]
 		for i in range(0,count):
 			entry=OrderedDict()
 			parentnode=self.actnode
@@ -695,6 +721,7 @@ class frombflyt(ClsFunc, TypeReader):
 			extraoffset=self.uint32(data,ptr); ptr+=4
 			pad=self.uint32(data,ptr); ptr+=4
 			if entryoffset!=0:
+				entryoffsets.append(entryoffset)
 				length=self.uint32(data,entryoffset+4);
 				entrydata=data[entryoffset:entryoffset+length]
 				magic=entrydata[0:4].decode('ascii')
@@ -704,12 +731,23 @@ class frombflyt(ClsFunc, TypeReader):
 					print('Invalid section magic: %s'%magic)
 				method(entrydata)
 			if extraoffset!=0:
+				extraoffsets.append(extraoffset)
 				extra=data[extraoffset:extraoffset+48].hex()
 				key=list(entry.keys())[-1]
 				entry['extra']=extra
 			self.actnode=self.actnode['__parentnode']
 			entries.append(entry)
 		localnode['entries']=entries
+		if extraoffsets==[]:
+			if entryoffsets==[]:
+				end=ptr
+			else:
+				lastentry=max(entryoffsets)
+				end=lastentry+self.uint16(data,lastentry+4)
+		else:
+			end=max(extraoffsets)+48
+		if end<len(data):
+			localnode['dump']=data[end:]
 	
 	def readgrp1(self,data):
 		ptr=8
@@ -753,8 +791,7 @@ class frombflyt(ClsFunc, TypeReader):
 		localnode['part-number']=partnum
 		localnode['anim-number']=animnum
 		name=self.string(data,ptr)
-		ptr+=len(name)
-		ptr+=4-(ptr%4)
+		ptr+=(len(name)+(4-(len(name)%4)))*2
 		localnode['name']=name
 		if partnum!=0:
 			ptr=offset2
@@ -813,15 +850,18 @@ class tobflyt(ClsFunc, TypeWriter):
 		final+=self.uint16(0)
 		return final
 	
-	def repacktree(self,tree,top=False):
+	def repacktree(self,tree,top=False,safe=False):
 		final=b''
 		for section in tree.keys():
 			magic=section.split('-')[0]
 			try:
 				method=eval('self.pack%s'%magic)
 			except AttributeError:
-				print('Invalid section: %s'%magic)
-				sys.exit(4)
+				if not safe:
+					print('Invalid section: %s'%magic)
+					sys.exit(4)
+				else:
+					continue
 			if top:
 				self.secnum+=1
 			final+=method(tree[section])
@@ -855,7 +895,8 @@ class tobflyt(ClsFunc, TypeWriter):
 			offsettbl+=self.uint32(offset)
 		final+=offsettbl
 		final+=filetable
-		final+=self.pad(4-(len(final)%4))
+		if len(final)%4!=0:
+			final+=self.pad(4-(len(final)%4))
 		hdr=self.sechdr(final,'txl1')
 		return hdr+final
 	
@@ -981,7 +1022,7 @@ class tobflyt(ClsFunc, TypeWriter):
 		hdr=self.sechdr(final,'mat1')
 		return hdr+final
 	
-	def packpane(self,data):
+	def packpane(self,data): #pane section: 76B
 		panesec=b''
 		flags=0
 		flags|=data['visible']
@@ -1014,7 +1055,7 @@ class tobflyt(ClsFunc, TypeWriter):
 	def packpan1(self,data):
 		final=self.packpane(data)
 		hdr=self.sechdr(final,'pan1')
-		return final+hdr
+		return hdr+final
 
 	def packpas1(self,data):
 		tree=self.repacktree(data,True)
@@ -1091,8 +1132,11 @@ class tobflyt(ClsFunc, TypeWriter):
 		final+=self.uint32(shadow['unknown-2'])
 		text=data['text'].encode('utf-16-%se'%('l' if self.byteorder=='<' else 'b'))
 		final+=text
-		final+=self.pad(4-(len(text)%4))
-		final+=self.string4(data['call-name'])
+		if len(final)%4!=0:
+			final+=self.pad(4-(len(text)%4))
+		final+=data['call-name'].encode('ascii')  #because of padding issues
+		if len(final)%4!=0:
+			final+=self.pad(4-(len(text)%4))
 		hdr=self.sechdr(final,'txt1')
 		return hdr+final
 
@@ -1103,7 +1147,6 @@ class tobflyt(ClsFunc, TypeWriter):
 		final+=self.uint16(data['unknown'])
 		nametbl=b''
 		datatbl=b''
-		entries=b''
 		nameoffsets=[]
 		dataoffsets=[]
 		for entry in data['entries']:
@@ -1124,8 +1167,10 @@ class tobflyt(ClsFunc, TypeWriter):
 					datatbl+=self.int32(el)
 				elif datatype==2:
 					datatbl+=self.float32(el)
-		datatbl+=self.pad(4-(len(datatbl)%4))
-		nametbl+=self.pad(4-(len(nametbl)%4))
+		if len(datatbl)%4!=0:
+			datatbl+=self.pad(4-(len(datatbl)%4))
+		if len(nametbl)%4!=0:
+			nametbl+=self.pad(4-(len(nametbl)%4))
 		i=0
 		entryoffset=len(final)
 		for entry in data['entries']: #1 entry in the table = 12B
@@ -1176,53 +1221,127 @@ class tobflyt(ClsFunc, TypeWriter):
 
 	def packprt1(self,data):
 		final=self.packpane(data)
-		
+		final+=self.uint32(data['section-count'])
+		final+=self.float32(data['section-scale-X'])
+		final+=self.float32(data['section-scale-Y'])
+		entrydata=b''
+		extradata=b''
+		dataoffsets=[]
+		extraoffsets=[]
+		for entry in data['entries']:
+			sec=self.repacktree(entry,safe=True)
+			if sec!=b'':
+				dataoffsets.append(len(entrydata)+len(data['entries'])*36+88)
+			else:
+				dataoffsets.append(0)
+			entrydata+=sec
+		for entry in data['entries']:
+			if 'extra' in entry.keys():
+				extraoffsets.append(len(extradata)+len(entrydata)+len(data['entries'])*36+88)
+				extradata+=bytes.fromhex(entry['extra'])
+			else:
+				extraoffsets.append(0)
+		i=0
+		for entry in data['entries']: #1 entry=36B
+			final+=self.string(entry['name'],24)
+			final+=self.uint8(entry['unknown-1'])
+			final+=self.uint8(entry['flags'])
+			final+=self.pad(2)
+			final+=self.uint32(dataoffsets[i])
+			final+=self.uint32(extraoffsets[i])
+			i+=1
+		if len(entrydata)%4!=0:
+			entrydata+=self.pad(4-(len(entrydata)%4))
+		extradata+=(self.pad(4-(len(extradata)%4)) if len(extradata)%4!=0 else b'')
+		final+=entrydata
+		final+=extradata
+		if 'dump' in data.keys():
+			final+=data['dump']
 		hdr=self.sechdr(final,'prt1')
 		return hdr+final
 
 	def packgrp1(self,data):
 		final=b''
-		
+		final+=self.string(data['name'],34)
+		final+=self.uint16(len(data['subs']))
+		for sub in data['subs']:
+			final+=self.string(sub,24)
 		hdr=self.sechdr(final,'grp1')
 		return hdr+final
 
 	def packgrs1(self,data):
 		final=b''
-		
 		hdr=self.sechdr(final,'grs1')
+		content=self.repacktree(data, top=True)
+		final+=content
 		return hdr+final
 
 	def packgre1(self,data):
 		final=b''
-		
 		hdr=self.sechdr(final,'gre1')
 		return hdr+final
 
 	def packcnt1(self,data):
 		final=b''
-		
+		sec1=b''
+		sec2=b''
+		sec3=b''
+		partnum=0
+		animnum=0
+		if 'parts' in data.keys():
+			partnum=len(data['parts'])
+			for part in data['parts']:
+				sec1+=self.string(part,24)
+		if 'anim-part' in data.keys():
+			animnode=data['anim-part']
+			animnum=len(animnode['anims'])
+			animname=self.string4(animnode['name'])
+			sec2+=self.uint32(len(animname))
+			sec2+=animname
+			offsets=[4*len(animnode['anims'])]
+			names=self.string(animnode['anims'][0])
+			for anim in animnode['anims'][1:]:
+				offsets.append(offsets[0]+len(names))
+				names+=self.string(anim)
+			names+=self.pad(4-(len(names)%4))
+			for offset in offsets:
+				sec3+=self.uint32(offset)
+			sec3+=names
 		hdr=self.sechdr(final,'cnt1')
+		name=self.string4(data['name'])
+		offset1=len(name)+28
+		offset2=len(name)*2+28
+		offset3=len(sec1)+len(sec2)+len(name)*2+28
+		offset4=offset3+len(sec3)
+		final+=self.uint32(offset1)
+		final+=self.uint32(offset2)
+		final+=self.uint16(partnum)
+		final+=self.uint16(animnum)
+		final+=self.uint32(offset3)
+		final+=self.uint32(offset4)
+		final+=name+name
+		final+=sec1
+		final+=sec2
+		final+=sec3
+		final+=sec2  #?
+		if 'dump' in data.keys():
+			final+=data['dump']
 		return hdr+final
 
 if __name__=='__main__':
-	args=sys.argv[1:]
-	if '-h' in args or len(args)==0:
-		print('A tool to convert BFLYT files to a readable format')
-		print('by Tyulis')
-		print('Inspirated from BenzinU by Diddy81')
-		print('Using:')
-		print('\tbflyt.py [-x | -p] <file>')
-		print('')
-		print('-x: convert from BFLYT to TFLYT')
-		print('-p: convert from TFLYT to BFLYT')
-	elif '-x' in args:
-		outname=args[-1].split('/')[-1].replace('.bflyt', '.tflyt')
-		tree=frombflyt(fread(args[-1]))
+	parser=argparse.ArgumentParser(description='Converts between BFLYT and readable TFLYT formats')
+	mode=parser.add_mutually_exclusive_group()
+	mode.add_argument('-x', '--extract', help='Extract data from a BFLYT file to a readable TFLYT file', action='store_true')
+	mode.add_argument('-p', '--pack', help='Pack the data contained in a readable TFLYT file into a BFLYT file', action='store_true')
+	mode.add_argument('-s','--setting',action='store_true')
+	parser.add_argument('file_name', help='Input file name')
+	args=parser.parse_args()
+	if args.extract:
+		outname=args.file_name.split('/')[-1].replace('.bflyt', '.tflyt')
+		tree=frombflyt(fread(args.file_name))
 		fwrite(dump(tree,[OrderedDict]), outname, 'w')
-	elif '-p' in args:
-		outname=args[-1].split('/')[-1].replace('.tflyt', '.bflyt')
-		tree=load(fread(args[-1],'r'))
+	elif args.pack:
+		outname=args.file_name.split('/')[-1].replace('.tflyt', '.bflyt')
+		tree=load(fread(args.file_name,'r'))
 		bflyt=tobflyt(tree)
 		fwrite(bflyt, outname)
-	else:
-		print('No option specified')
