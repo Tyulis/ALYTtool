@@ -11,21 +11,28 @@ import bflim
 import bflyt
 from txtree import dump, load
 
-GET_SWIZZLE_FROM_LOG=re.compile(r'.*?\(0x(\d)\)')
+GET_SWIZZLE_FROM_LOG = re.compile(r'.*?\(0x(\d)\)')
 
 
 #to avoid always repeating this...
 def fwrite(content, filename, mode='w'):
-	f = open(filename, mode)
+	if mode == 'w':
+		f = open(filename, mode, encoding='utf-8')
+	else:
+		f = open(filename, mode)
 	f.write(content)
 	f.close()
 
 
 def fread(filename, mode='r'):
-	f = open(filename, mode)
+	if mode == 'r':
+		f = open(filename, mode, encoding='utf-8')
+	else:
+		f = open(filename, mode)
 	content = f.read()
 	f.close()
 	return content
+
 
 def ls(path='.'):
 	for path, folders, files in os.walk(path):  #to get the content of the folder
@@ -60,10 +67,11 @@ def extract_convert(name):
 		extract_convert_ALYT(folder)
 	else:
 		extract_convert_BL(folder)
+	
 
 def extract_convert_BL(folder):
 	os.chdir(folder)
-	path, folders, files=ls()
+	path, folders, files = ls()
 	for alyt in folders:
 		extract_convert_ALYT(alyt)
 	os.chdir('..')
@@ -72,8 +80,8 @@ def extract_convert_BL(folder):
 def extract_convert_ALYT(folder):
 	os.chdir(folder+'timg')
 	path, folders, files = ls()
-	log=open('_extract.log','w')
-	sys.stdout=log
+	log = open('_extract.log', 'w')
+	sys.stdout = log
 	for filename in files:
 		if not filename.endswith('.bflim'):
 			continue
@@ -82,7 +90,7 @@ def extract_convert_ALYT(folder):
 		img = bflim.Bflim(verbose=False, debug=True, big_endian=False, swizzle=0)
 		img.read(filename, parse_image=True)
 		if img.invalid:
-			sys.stdout=sys.__stdout__
+			sys.stdout = sys.__stdout__
 			print('%s is not a valid BFLIM file' % filename)
 			sys.exit(13)
 		img.extract()
@@ -96,9 +104,9 @@ def extract_convert_ALYT(folder):
 		if not filename.endswith('.bflyt'):
 			continue
 		print(filename)
-		outname=filename.replace('.bflyt', '.tflyt')
-		tree=bflyt.frombflyt(fread(filename, 'rb'))
-		fwrite(dump(tree,[bflyt.OrderedDict]), outname, 'w')
+		outname = filename.replace('.bflyt',  '.tflyt')
+		tree = bflyt.frombflyt(fread(filename,  'rb'))
+		fwrite(dump(tree, [bflyt.OrderedDict]), outname, 'w')
 		os.remove(filename)
 	print('Extracted BFLYT files')
 	os.chdir('..')
@@ -107,7 +115,7 @@ def extract_convert_ALYT(folder):
 
 def repack_convert(folder):
 	if not folder.endswith('/'):  #more practice
-		folder+='/'
+		folder += '/'
 	if os.path.exists(folder+'_alyt.repack.meta'):
 		repack_convert_ALYT(folder)
 	else:
@@ -124,21 +132,21 @@ def repack_convert_BL(folder):
 
 def repack_convert_ALYT(folder):
 	os.chdir(folder+'timg')
-	logbs=fread('_extract.log','r').splitlines()
-	log=[[]]
+	logbs = fread('_extract.log', 'r').splitlines()
+	log = [[]]
 	for line in logbs:
-		if line=='':
+		if line == '':
 			log.append([])
 		elif line.endswith('.bflim') or line.startswith('imag Swizzle:') or line.startswith('imag Format'):
 			log[-1].append(line)
-	if log[-1]==[]:
+	if log[-1] == []:
 		del log[-1]
 	for info in log:
 		print(info[0])
 		format = info[1].split(': ')[1]
 		swizzle = int(re.sub(GET_SWIZZLE_FROM_LOG, r'\1', info[2]))
 		img = bflim.Bflim(verbose=False, debug=True, big_endian=False, swizzle=swizzle, format=format)
-		img.load(info[0].replace('.bflim','.png'))
+		img.load(info[0].replace('.bflim', '.png'))
 		img.save(info[0])
 	os.chdir('../blyt')
 	path, folders, files = ls()
@@ -146,7 +154,7 @@ def repack_convert_ALYT(folder):
 		if not filename.endswith('.tflyt'):
 			continue
 		outname = filename.replace('.tflyt', '.bflyt')
-		tree = load(fread(filename,'r'))
+		tree = load(fread(filename, 'r'))
 		final = bflyt.tobflyt(tree)
 		fwrite(final, outname, 'wb')
 	os.chdir('../..')
@@ -223,7 +231,11 @@ def extractALYT(alyt, name):
 	for j in range(0, filenumber):
 		nametable.append(alyt[i:i + 64].rstrip(b'\x00').decode('utf-8'))
 		i += 64
-	log.write('\n'.join(nametable))
+	j = 0
+	for nm in nametable:
+		log.write('%d: %s\n' % (j, nm))
+		j += 1
+		
 	fwrite(alyt[bs:i], '_alyt.repack.meta/alyt.nmtb', 'wb')
 	
 	bs = i
@@ -234,8 +246,11 @@ def extractALYT(alyt, name):
 		symtable.append(alyt[i:i + 32].rstrip(b'\x00').decode('utf-8'))
 		i += 32
 	log.write('\n')
-	log.write('\nSymbol names? (number: %d)\n' % len(symtable))
-	log.write('\n'.join(symtable))
+	log.write('\nSymbols (number: %d)\n' % len(symtable))
+	j = 0
+	for sym in symtable:
+		log.write('%d: %s\n' % (j, sym))
+		j += 1
 	i = alyt[i:-1].index(b'SARC') + i
 	fwrite(alyt[bs:i], '_alyt.repack.meta/alyt.symtbl', 'wb')
 	sarchdata = struct.unpack('<4sHHIII', alyt[i:i + 0x14])
