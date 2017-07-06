@@ -1,5 +1,5 @@
 -----------------ALYT (Archived LaYouT?) file format documentation-----------------
-Written by Tyulis. I have found all informations descripted here
+Written by Tyulis. I found all informations descripted here
 
 All values are little endian
 
@@ -7,7 +7,7 @@ First, an ALYT Header:
 	Offset (relative) | Size (in bytes) | Description
 	-------------------------------------------------
 	0x00              | 4               | Magic string (Always "ALYT")
-	0x04              | 4               | Undetermined (seems to be always 0x02000400)
+	0x04              | 4               | Undetermined (appears to be always 0x02000400)
 	0x08              | 4               | ALYT header length (0x28)
 	0x0C              | 4               | LTBL section's length
 	0x10              | 4               | End offset of LTBL section
@@ -21,13 +21,48 @@ Then, 3 sections named LTBL, LMTL and LFNL, with a similar header:
 	Offset (relative) | Size (in bytes)      | Description
 	-------------------------------------------------
 	0x00              | 4                    | Magic (name of the section)
-	0x04              | 2                    | Unknown
-	0x06              | 2                    | Appears to be the number of BFLYT files in the archive
+	0x04              | 2                    | Unknown. Always 0.
+	0x06              | 2                    | Number of entries. 1 entry/BFLYT file contained
+	0x08              | 4/entry              | Offset table. Offset of the entries, relative to the section beginning
 
-A file names table. Purpose undetermined
+The data contained is obviously different.
+
+LTBL:
+
+ Each entry has this structure:
+	2B: Offset of the bflyt file in the name table (4=the 4th name in the table, from the beginning)
+	2B: Number of prt1 sections in the BFLYT
+	4B: Number of anims
+	4B: prt1 names offsets table offset
+	4B: links (?) offsets table offset
+	4B: anims names offsets table offset
+	These 3 offsets are relative to the beginning of the entry, and are 0 if the table contains no entries
+	prt1 sections names in the BFLYT file indexes in the symbol table (2B/offset). Aligned to 4 Bytes
+	Links? same number as prt1 names offsets and also 2B/entry. Indexes of some BFLYT files in the file name table. Aligned to 4 Bytes
+	Anims file names offsets (exactly like the BFLYT offset, but in 4B) (4B/offset). Aligned to 4 Bytes
+
+LMTL:
+
+Each entry has this structure:
+	2B: Offset of the bflyt file in the name table (4=the 4th name in the table, from the beginning)
+	2B: blocks number? Appears to be always 0 or 1
+	Then blocks:
+		4B: length of the block (in bytes)
+		Data
+
+LFNL:
+
+Each entry has this structure:
+	2B: offset 
+	2B: subentry count
+	Entries. 2B/entry. Unknown
+The offsets are entry numbers of BFLYT file names in the file name table (4=the 4th name in the table, from the beginning)
+
+
+A file names table.
 Entries are ASCII file names, without folder, and padded with null bytes to fill 64 bytes
 
-A string table, seems to be symbols (these strings can be found in the contained BFLYT and BFLAN file)
+A symbol table (these strings are notably materials, panes and groups names in BFLYT files)
 Entries are ASCII strings, and padded with null bytes to fill 32 bytes
 
 Then, there is a variable padding, and a standard SARC section, which contains files. You can find a full documentation on SARC format on http://3dbrew.org/wiki/SARC
