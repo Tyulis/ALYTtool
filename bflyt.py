@@ -929,7 +929,7 @@ class tobflyt(ClsFunc, TypeWriter):
 		self.materials=data['materials']
 		self.matnames=[el['name'] for el in self.materials]
 		offsets=[]
-		offset_tbl_length=len(self.materials)*4
+		offset_tbl_length=12+len(self.materials)*4
 		matdata=b''
 		for mat in self.materials:
 			offsets.append(offset_tbl_length+len(matdata))
