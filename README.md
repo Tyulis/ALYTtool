@@ -1,5 +1,7 @@
 # ALYTtool
-A tool to extract and repack ALYT files used in Pokémon games to store UI data and images
+A tool to extract and repack ALYT files used in Pokémon games to store UI data and textures
+
+**This repo is dead. Use [3DSkit](https://github.com/Tyulis/3DSkit) instead, which can do anything ALYTtool can do. The only interesting content here is the formats references.**
 
 It also support transparently BL archives, which contain several ALYT and other files.
 
